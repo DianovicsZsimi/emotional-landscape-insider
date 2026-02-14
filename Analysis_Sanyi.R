@@ -172,7 +172,7 @@ research_stage_emotions = research_stage_emotions %>%
 research_stage_emotions = research_stage_emotions %>%   
   mutate(across(starts_with("feeling_"),
                 ~ as.numeric(as.character(.x)))) %>% 
-  mutate(across(12:21, ~ .x * -1)) %>% 
+  mutate(across(12:21, ~ 8 - .x)) %>% 
   drop_na() %>% 
   group_by(research_stage) %>%
   summarise(across(starts_with("feeling_"),
@@ -206,7 +206,7 @@ area_emotions = area_emotions %>%
 area_emotions = area_emotions %>%   
   mutate(across(starts_with("feeling_"),
                 ~ as.numeric(as.character(.x)))) %>% 
-  mutate(across(12:21, ~ .x * -1)) %>% 
+  mutate(across(12:21, ~ 8 - .x)) %>% 
   drop_na() %>% 
   group_by(area) %>%
   summarise(across(starts_with("feeling_"),
@@ -239,7 +239,7 @@ position_emotions = position_emotions %>%
 position_emotions = position_emotions %>%   
   mutate(across(starts_with("feeling_"),
                 ~ as.numeric(as.character(.x)))) %>% 
-  mutate(across(12:21, ~ .x * -1)) %>% 
+  mutate(across(12:21,~ 8 - .x)) %>% 
   drop_na() %>% 
   group_by(position) %>%
   summarise(across(starts_with("feeling_"),
@@ -257,9 +257,66 @@ position_emotions_mean %>%
   ggplot()+
   aes(y = reorder(position, mean_emotion), x = mean_emotion, fill = mean_emotion)+ 
   geom_col(width = 0.3)+
+  geom_vline(xintercept = 4, linetype = "dashed")+
+  coord_cartesian(xlim = c(1,7))+
+  geom_rect(aes(xmin = 4, xmax = mean_emotion,  ymin = as.numeric(reorder(position, mean_emotion)) - 0.15,
+                ymax = as.numeric(reorder(position, mean_emotion)) + 0.15
+  ))+
   scale_fill_gradient(low = "orange", high = "red")+
   theme_tufte()+
   labs(title = "Overal emotional landscape per position", x = "", y = "")+
   theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3))+
-  theme(plot.title = element_text(angle = 0, hjust = 0.5, face = "bold"))
+  theme(plot.title = element_text(angle = 0, hjust = 0.5, face = "bold"))+
+  theme(legend.position = "none")
+
+
+position_emotions_mean %>% 
+  mutate(dev = mean_emotion - 4) %>% 
+  arrange(mean_emotion) %>% 
+  ggplot(aes(
+    y = reorder(position, mean_emotion),
+    x = dev,
+    fill = mean_emotion
+  )) +
+  geom_col(width = 0.3) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_x_continuous(
+    limits = c(-3, 3),
+    breaks = -3:3,
+    labels = 1:7
+  ) +
+  scale_fill_gradient(low = "orange", high = "red") +
+  theme_tufte() +
+  labs(title = "Overall emotional landscape per position", x = "", y = "") +
+  theme(
+    axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "none"
+  )
+
+
+#important sidenote --> if you want to flip the reverse-coded items, multiplying by -1 is not a great approach
+"it is a 7 point likert scale --> the proper way to do that is not to center the mean around 0, but to center
+the mean around the middle of the scale, so 4 --> correct way to do that: if someone has 1 on happy and 7 on sad --> if 7 is flipped by 8-x, so 8-7, then sadness will be worth 1 at the end of the analysis, so it will pull the mean to 0.5 --> and that is correct methodologically 
+Because: if the mean would be centered around 0 with with a negative flip, the scale would be stretched artificially"
+data_recoded_mean_feeling = data_recoded %>% 
+  mutate(across(starts_with("feeling_"),
+                ~ as.numeric(as.character(.x)))) %>% 
+  mutate(
+    across(c(feeling_sadness, feeling_anger), ~ 8 - .)
+  ) %>% 
+  mutate(mean_feeling = rowMeans(across(feeling_interest:feeling_anger)))
+
+
+
+#Analysis - valszeg ANOVA-t nem tudunk csinálni, mivel túl sok a missing datapoint --> csak na-k kizárásával lehetne
+mod1 = lm(mean_feeling ~ area, data = data_recoded_mean_feeling)
+mod1  
+summary(mod1)
+
+mod2 = lm(mean_feeling ~ research_stage+position, data = data_recoded_mean_feeling)
+summary(mod2)
+
+mod3 = lm(mean_feeling ~ country, data = data_recoded_mean_feeling)
+summary(mod3)
 
