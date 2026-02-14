@@ -1,11 +1,10 @@
 "Emotional landscape project"
-
+install.packages("ggthemes")
 library(tidyverse)
 library(ggplot2)
 library(dplyr)
 library(stringr)
 library(rstatix)
-install.packages("ggthemes")
 library(ggthemes)
 raw_data = read.csv("D:/Emotional landscape/raw_data.csv")
 
@@ -192,7 +191,75 @@ research_stage_emotions_mean %>%
   geom_col(width = 0.3)+
   scale_fill_gradient(low = "orange", high = "red")+
   theme_tufte()+
-  labs(title = "Valence per stage", x = "", y = "")+
+  labs(title = "Overal emotional landscape per stage", x = "", y = "")+
   theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3))+
   theme(plot.title = element_text(angle = 0, hjust = 0.5, face = "bold"))
   
+
+#overall emotion visualization area
+area_emotions = data_recoded %>% 
+  select(area, starts_with("feeling_") )
+
+
+area_emotions = area_emotions %>% 
+  select(-22)
+area_emotions = area_emotions %>%   
+  mutate(across(starts_with("feeling_"),
+                ~ as.numeric(as.character(.x)))) %>% 
+  mutate(across(12:21, ~ .x * -1)) %>% 
+  drop_na() %>% 
+  group_by(area) %>%
+  summarise(across(starts_with("feeling_"),
+                   ~ mean(.x, na.rm = TRUE),
+                   .names = "mean_{.col}"))
+area_emotions = area_emotions[-1,]
+
+area_emotions_mean = area_emotions %>% 
+  mutate(mean_emotion = rowMeans(across(c(starts_with("mean_"))))) %>% 
+  select(area, mean_emotion) %>% 
+  arrange(mean_emotion)
+
+area_emotions_mean %>% 
+  arrange(area_emotions_mean) %>% 
+  ggplot()+
+  aes(y = reorder(area, mean_emotion ), x = mean_emotion, fill = mean_emotion)+ 
+  geom_col(width = 0.3)+
+  scale_fill_gradient(low = "orange", high = "red")+
+  theme_tufte()+
+  labs(title = "Overall emotional landcape per field", x = "", y = "")+
+  theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3))+
+  theme(plot.title = element_text(angle = 0, hjust = 0.5, face = "bold"))
+
+#overall emotions position-wise visualization
+position_emotions = data_recoded %>% 
+  select(position, starts_with("feeling_") )
+
+position_emotions = position_emotions %>% 
+  select(-22)
+position_emotions = position_emotions %>%   
+  mutate(across(starts_with("feeling_"),
+                ~ as.numeric(as.character(.x)))) %>% 
+  mutate(across(12:21, ~ .x * -1)) %>% 
+  drop_na() %>% 
+  group_by(position) %>%
+  summarise(across(starts_with("feeling_"),
+                   ~ mean(.x, na.rm = TRUE),
+                   .names = "mean_{.col}"))
+position_emotions = position_emotions[-1,]
+
+position_emotions_mean = position_emotions %>% 
+  mutate(mean_emotion = rowMeans(across(c(starts_with("mean_"))))) %>% 
+  select(position, mean_emotion) %>% 
+  arrange(mean_emotion)
+
+position_emotions_mean %>% 
+  arrange(mean_emotion) %>% 
+  ggplot()+
+  aes(y = reorder(position, mean_emotion), x = mean_emotion, fill = mean_emotion)+ 
+  geom_col(width = 0.3)+
+  scale_fill_gradient(low = "orange", high = "red")+
+  theme_tufte()+
+  labs(title = "Overal emotional landscape per position", x = "", y = "")+
+  theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3))+
+  theme(plot.title = element_text(angle = 0, hjust = 0.5, face = "bold"))
+
