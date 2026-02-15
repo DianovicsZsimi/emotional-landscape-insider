@@ -6,7 +6,9 @@ library(dplyr)
 library(stringr)
 library(rstatix)
 library(ggthemes)
-raw_data = read.csv("D:/Emotional landscape/raw_data.csv")
+library(tidyr)
+
+raw_data = read.csv("C:/Emotional landscape/raw_data.csv")
 
 
 data_recoded = raw_data[-1:-2, ]
@@ -319,4 +321,91 @@ summary(mod2)
 
 mod3 = lm(mean_feeling ~ country, data = data_recoded_mean_feeling)
 summary(mod3)
+
+"Operation chain
+- Compare each participants' ratings and determine which of them has the highest rating
+- For the highest rating there is a cause column
+- new df
+- In col1, the cause_response items of the participants who rated feeling1 the highest from all the feeling items that he had to answer
+- In colx --> similar pattern until col 20, since that many feelings are there
+- Issue: some participants rated multiple as the highest --> they had to specify it in their answer for cause_response, which feeling are they elaborating on --> this could only be filtered with str_detect"
+
+
+
+feeling_cols <- c(
+  "feeling_interest","feeling_amusement","feeling_pride","feeling_joy","feeling_pleasure",
+  "feeling_contentment","feeling_love","feeling_admiration","feeling_relief","feeling_compassion",
+  "feeling_sadness","feeling_guilt","feeling_regret","feeling_shame","feeling_disappointment",
+  "feeling_fear","feeling_disgust","feeling_contempt","feeling_hate","feeling_anger"
+)
+
+feelings_resolved <- data_recoded %>%
+  pivot_longer(
+    cols = all_of(feeling_cols),
+    names_to = "feeling",
+    values_to = "rating"
+  ) %>%
+  group_by(ResponseId) %>%
+  mutate(max_rating = max(rating, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(rating == max_rating) %>%                         # keep ties
+  mutate(
+    feeling_word = str_remove(feeling, "^feeling_"),
+    mentioned = str_detect(
+      str_to_lower(cause_stage),
+      regex(str_c("\\b", feeling_word, "\\b"), ignore_case = TRUE)
+    )
+  ) %>%
+  group_by(ResponseId) %>%
+  # prefer the tied feeling that is mentioned in the text; if none mentioned, keep the first tied feeling
+  arrange(desc(mentioned), .by_group = TRUE) %>%
+  slice(1) %>%
+  ungroup() %>%
+  select(ResponseId, feeling, cause_stage)
+
+response_max_feeling <- feelings_resolved %>%
+  pivot_wider(
+    id_cols = ResponseId,
+    names_from = feeling,
+    values_from = cause_stage
+  ) 
+
+
+response_max_feeling_clean = response_max_feeling %>%   
+  filter(if_any(-ResponseId, ~ !is.na(.) & . != ""))
+
+df_long <- response_max_feeling_clean %>%
+  pivot_longer(-ResponseId,
+               names_to = "feeling",
+               values_to = "text") %>%
+  filter(!is.na(text))
+
+positive_feelings <- c(
+  "feeling_interest","feeling_amusement","feeling_pride","feeling_joy","feeling_pleasure",
+  "feeling_contentment","feeling_love","feeling_admiration","feeling_relief","feeling_compassion"
+)
+
+
+#Attributional analysis (?)
+
+df_long <- df_long %>%
+  mutate(
+    attribution = case_when(
+      str_detect(text, regex("\\bI\\b|\\bmy\\b|myself|my own|I failed|I tried", ignore_case = TRUE)) ~ "Internal",
+      str_detect(text, regex("reviewer|editor|system|institution|policy|funding|colleague|market", ignore_case = TRUE)) ~ "External",
+      TRUE ~ "Mixed/Unclear"
+    )
+  )
+
+mean_feeling = data.frame(data_recoded_mean_feeling$mean_feeling)
+data_recoded = data_recoded %>% 
+  mutate(mean_feeling = add_column(mean_feeling))
+
+df_long <- df_long %>%
+  mutate(valence = if_else(feeling %in% positive_feelings,
+                           "Positive",
+                           "Negative"))  
+
+
+
 
