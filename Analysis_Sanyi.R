@@ -452,7 +452,7 @@ df_long_feelings_excluded = df_long_feelings_included %>%
   slice(-2)
 
 "The attributional categories were selected after manually reading through the first 100 responses of 754 items."
-df_long <- df_long %>%
+df_long_feelings_excluded <- df_long_feelings_excluded %>%
   mutate(
     attribution_category = case_when(
       
@@ -460,7 +460,7 @@ df_long <- df_long %>%
       
       str_detect(text, regex("data|analysis|results|insight|experiment|finding", ignore_case = TRUE)) ~ "Data/Results",
       
-      str_detect(text, regex("ethic|bureaucr|paperwork|funding|NIH|permit|legal", ignore_case = TRUE)) ~ "Institutional/Bureaucracy",
+      str_detect(text, regex("ethic|bureaucr|paperwork|funding|NIH|permit|legal", ignore_case = TRUE)) ~ "Institutional",
       
       str_detect(text, regex("collaborat|team|mentor|colleague|supervisor", ignore_case = TRUE)) ~ "Collaboration",
       
@@ -475,12 +475,10 @@ df_long <- df_long %>%
       str_detect(text, regex("sexism|bias|underfund|peripheral|mobing|institution|racism", ignore_case = TRUE)) ~ "Structural Inequality",
       
       str_detect(text, regex("lonely|isolat", ignore_case = TRUE)) ~ "Isolation",
-      
-      TRUE ~ "Other/Unclear"
-    ))
+      TRUE ~ "Other/Unclear" ))
     
     
-    overall_counts <- df_long %>%
+    overall_counts <- df_long_feelings_excluded %>%
       count(attribution_category) %>%
       mutate(prop = n / sum(n)) %>%
       arrange(prop)
@@ -495,7 +493,6 @@ df_long <- df_long %>%
            y = "Proportion of Responses") +
       theme_minimal(base_size = 13)
 
-# ----------------------------
 feeling_cols <- c(
   "feeling_interest","feeling_amusement","feeling_pride","feeling_joy","feeling_pleasure",
   "feeling_contentment","feeling_love","feeling_admiration","feeling_relief","feeling_compassion",
@@ -684,3 +681,4 @@ ggplot(valence_counts,
     y = "Proportion within Valence"
   ) +
   theme_minimal(base_size = 13)
+
