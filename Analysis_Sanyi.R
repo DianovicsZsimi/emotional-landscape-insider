@@ -180,15 +180,16 @@ gender_emotions = gender_emotions %>%
 gender_emotions = gender_emotions %>% 
   select(-22)
 gender_emotions = gender_emotions %>%   
-  mutate(across(starts_with("feeling_"),
-                ~ as.numeric(as.character(.x)))) %>% 
   mutate(across(12:21, ~ 8 - .x)) %>% 
   drop_na() %>% 
-  group_by(gender) %>%
-  summarise(across(starts_with("feeling_"),
-                   ~ mean(.x, na.rm = TRUE),
-                   .names = "mean_{.col}")) %>% 
-  slice(-1)
+  group_by(gender) %>% 
+  summarise(
+    across(
+      .cols = starts_with("feeling_"),
+      .fns  = ~ {
+        x <- .x
+        x <- x[!is.na(x) & x != 0]
+        if (length(x) == 0) NA_real_ else mean(x)},.names = "mean_{.col}"))
 
 gender_emotions_mean = gender_emotions %>% 
   mutate(mean_emotion = rowMeans(across(c(starts_with("mean_"))))) %>% 
@@ -223,19 +224,27 @@ gender_emotions_mean %>%
 #overall emotions visualization by research stage
 
 research_stage_emotions = data_recoded %>% 
-  select(research_stage, starts_with("feeling_") )
+  select(research_stage, starts_with("feeling_"))
+
+research_stage_emotions = research_stage_emotions %>% 
+  mutate(
+    across(2:21, ~ na_if(.x, 0))
+  )
+
+summary(research_stage_emotions)
+research_stage_emptions = research_stage_emotions
 
 research_stage_emotions = research_stage_emotions %>% 
   select(-22)
 research_stage_emotions = research_stage_emotions %>%   
-  mutate(across(starts_with("feeling_"),
-                ~ as.numeric(as.character(.x)))) %>% 
   mutate(across(12:21, ~ 8 - .x)) %>% 
   drop_na() %>% 
-  group_by(research_stage) %>%
-  summarise(across(starts_with("feeling_"),
-                   ~ mean(.x, na.rm = TRUE),
-                   .names = "mean_{.col}"))
+  group_by(research_stage) %>% 
+  summarise(
+    across(.cols = starts_with("feeling_"),
+      .fns  = ~ { x <- .x
+        x <- x[!is.na(x) & x != 0]
+        if (length(x) == 0) NA_real_ else mean(x)},.names = "mean_{.col}"))
 
 research_stage_emotions_mean = research_stage_emotions %>% 
   mutate(mean_emotion = rowMeans(across(c(starts_with("mean_"))))) %>% 
@@ -257,8 +266,7 @@ research_stage_emotions_mean %>%
   ) +
   scale_fill_gradient(low = "orange", high = "red") +
   theme_tufte() +
-  labs(title = "Overall emotional landscape per research_stage",
-       x = "",
+  labs(title = "Overall emotional landscape per research_stage", x = "",
        y = "") +
   theme(
     axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
@@ -375,6 +383,290 @@ combined_emotions <- bind_rows(
 ) %>% 
   select(group, category, mean_emotion)
 
+#overall emotion visualization --> country
+country_emotions = data_recoded %>%  
+  select(ResponseId, country, country_other, starts_with("feeling_")) %>% 
+mutate(
+  mutate(across(starts_with("feeling_"),
+                ~ as.numeric(as.character(.x))))) %>% 
+    mutate(across(14:23,~ 8 - .x)) %>% 
+  mutate(mean_feeling = rowMeans(across(feeling_interest:feeling_anger)))
+
+country_emotions = country_emotions %>% 
+  select(-24) %>% 
+  pivot_longer(cols = c(country, country_other), 
+               names_to = "group", 
+               values_to = "country") %>%
+  drop_na()
+country_emotions = country_emotions %>% 
+filter(!(country == "")) %>% 
+  mutate(country = if_else(country == "N Macedonia", "North Macedonia", country)) %>% 
+  filter(!(ResponseId == "R_7YyTHrAj3Gc1fHP")) 
+target_id <- "R_7gbaE2EDWdQ3wOo"
+target_text <- "Also Germany Australia and recently China"
+
+
+split_row <- country_emotions %>%
+  filter(ResponseId == target_id, country == target_text) %>%
+  mutate(
+    country = str_replace_all(country, "(?<=[a-z])(?=[A-Z])", " "),
+    country = str_remove(country, "^Also\\s+"),
+    country = str_remove(country, "\\s+and recently\\s+"),
+    country = str_squish(country),
+    country = str_replace_all(country, "\\s+", ",")
+  ) %>%
+  separate_rows(country, sep = ",")
+
+rest <- country_emotions %>%
+  filter(!(ResponseId == target_id & country == target_text))
+
+country_emotions_clean <- bind_rows(split_row, rest)
+
+country_emotions_clean = country_emotions_clean %>% 
+  mutate(country = if_else(country == "Did my PhD in the US graduated in August and moved to Australia for postdoc", "United States of America", country)) %>% 
+  mutate(country = if_else(country == "i work from home from italy", "Italy", country)) %>% 
+  mutate(country = if_else(country == "Israel I am doing a collaboration in italy", "Israel", country)) %>% 
+  mutate(country = if_else(country == "Actually Im from Palestine unfortunatley there is no mention for state of Palestine", "Palestine", country)) %>% 
+  mutate(country = if_else(country == "China ", "China", country)) %>% 
+  mutate(country = if_else(country == "USA", "United States of America", country)) %>% 
+  mutate(country = if_else(country == "UK", "United Kingdom of Great Britain and Northern Ireland", country)) %>% 
+  mutate(country = if_else(country == "Makedonija", "Macedonia", country)) %>% 
+  mutate(country = if_else(country == "I am from Canada and have done research there", "Canada", country)) %>% 
+  mutate(country = if_else(country == "south africa", "South Africa", country)) %>% 
+  mutate(country = if_else(country == "England", "United Kingdom of Great Britain and Northern Ireland", country)) %>% 
+  mutate(country = if_else(country == "Macedonia", "North Macedonia", country)) %>%
+  filter(!(country == "Africa")) %>% 
+  mutate(country = if_else(country == "United Kingdom of Great Britain and Northern Ireland", "UK", country)) %>% 
+  mutate(country = if_else(country == "United States of America", "USA", country))
+
+country_emotions_clean <- bind_rows(
+  country_emotions_clean %>%
+    filter(ResponseId == "R_2GQ90ZxUHZ6JyFB", country == 	
+             "Burkina Faso USA") %>%
+    mutate(country = str_replace(country, "\\s+USA\\b", ",USA")) %>%  # insert delimiter before USA
+    separate_rows(country, sep = ","),
+  country_emotions_clean%>%
+    filter(!(ResponseId == "R_2GQ90ZxUHZ6JyFB"  & country == "Burkina Faso USA")))
+country_emotions_clean = bind_rows(
+  country_emotions_clean %>% 
+    filter(ResponseId == "R_7gbaE2EDWdQ3wOo" & country == "AustraliaChina") %>% 
+    mutate(country = str_replace(country, "China\\b", ",China ")) %>% 
+    separate_rows(country, sep = ","), 
+  country_emotions_clean %>% 
+    filter(!(ResponseId == "R_7gbaE2EDWdQ3wOo" & country == "AustraliaChina")))
+
+
+
+country_emotions_clean <- country_emotions_clean %>%
+  mutate(
+    continent = case_when(
+      country %in% c("Algeria", "Burkina Faso", "Egypt", 
+                     "Mali", "South Africa", "Sudan") ~ "Africa",
+      country %in% c("Argentina", "Brazil", "Chile", "Costa Rica", 
+                     "Colombia") ~ "South America/ Central America",
+      country %in% c("Canada", "Mexico", 
+                     "USA") ~ "North America",
+      country %in% c("Austria", "Belgium", "Croatia", "Czech Republic",
+                     "Denmark", "Finland", "France", "Germany", "Greece",
+                     "Hungary", "Iceland", "Ireland", "Italy", "Lithuania",
+                     "Netherlands", "North Macedonia", "Norway", "Poland",
+                     "Portugal", "Romania", "Serbia", "Slovenia", "Spain",
+                     "Sweden", "Switzerland",
+                     "UK") ~ "Europe",
+      country %in% c("China", "Hong Kong (S.A.R.)", "India", "Iran", "Iraq",
+                     "Israel", "Japan", "Lebanon", "Malaysia", "Pakistan",
+                     "Palestine", "Philippines", "Saudi Arabia", "Singapore",
+                     "South Korea", "Sri Lanka", "Taiwan", "Thailand") ~ "Asia",
+      country == "Turkey" ~ "Europe", 
+      country %in% c("Australia", "New Zealand") ~ "Oceania", TRUE ~ NA_character_))
+
+
+country_emotions_clean = country_emotions_clean %>% 
+  mutate(country = factor(country))
+levels(country_emotions_clean$country)
+
+#Europe
+europe_emotions_mean <- country_emotions_clean %>% 
+  filter(continent == "Europe") %>% 
+  group_by(country) %>% 
+  summarise(
+    mean_emotion = mean(mean_feeling, na.rm = TRUE),
+    .groups = "drop"
+  )
+europe_emotions_mean %>% 
+  mutate(dev = mean_emotion - 4) %>% 
+  arrange(mean_emotion) %>% 
+  ggplot(aes(y = reorder(country, mean_emotion), x = dev,fill = mean_emotion )) +
+  geom_col(width = 0.3) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7) +
+  scale_fill_gradient(low = "orange", high = "red") +
+  theme_tufte() +
+  labs(title = "Overall emotional landscape – Europe", x = "", y = "") +
+  theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
+    plot.title  = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "none")
+
+#Asia
+asia_emotions_mean = country_emotions_clean %>% 
+  filter(continent == "Asia") %>% 
+  group_by(country) %>% 
+  summarise(
+    mean_emotion = mean(mean_feeling, na.rm = TRUE),
+    .groups = "drop"
+  )
+asia_emotions_mean %>% 
+  mutate(dev = mean_emotion - 4) %>% 
+  arrange(mean_emotion) %>% 
+  ggplot(aes(y = reorder(country, mean_emotion), x = dev,fill = mean_emotion )) +
+  geom_col(width = 0.3) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7) +
+  scale_fill_gradient(low = "orange", high = "red") +
+  theme_tufte() +
+  labs(title = "Overall emotional landscape – Asia", x = "", y = "") +
+  theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
+        plot.title  = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "none")+
+  theme(axis.ticks.y = element_blank())
+
+#Africa
+africa_emotions_mean = country_emotions_clean %>% 
+  filter(continent == "Africa") %>% 
+  group_by(country) %>% 
+  summarise(
+    mean_emotion = mean(mean_feeling, na.rm = TRUE),
+    .groups = "drop"
+  )
+africa_emotions_mean %>% 
+  mutate(dev = mean_emotion - 4) %>% 
+  arrange(mean_emotion) %>% 
+  ggplot(aes(y = reorder(country, mean_emotion), x = dev,fill = mean_emotion )) +
+  geom_col(width = 0.3) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7) +
+  scale_fill_gradient(low = "orange", high = "red") +
+  theme_tufte() +
+  labs(title = "Overall emotional landscape – Africa", x = "", y = "") +
+  theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
+        plot.title  = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "none")+
+  theme(axis.ticks.y = element_blank())
+
+#North America
+NorthAmerica_emotions_mean = country_emotions_clean %>% 
+  filter(continent == "North America") %>% 
+  group_by(country) %>% 
+  summarise(
+    mean_emotion = mean(mean_feeling, na.rm = TRUE),
+    .groups = "drop"
+  )
+NorthAmerica_emotions_mean %>% 
+  mutate(dev = mean_emotion - 4) %>% 
+  arrange(mean_emotion) %>% 
+  ggplot(aes(y = reorder(country, mean_emotion), x = dev,fill = mean_emotion )) +
+  geom_col(width = 0.3) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7) +
+  scale_fill_gradient(low = "orange", high = "red") +
+  theme_tufte() +
+  labs(title = "Overall emotional landscape – North America", x = "", y = "") +
+  theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
+        plot.title  = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "none")+
+  theme(axis.ticks.y = element_blank())
+
+
+#South America/ Central America
+SouthcentralAmerica_emotions_mean = country_emotions_clean %>% 
+  filter(continent == "South America/ Central America") %>% 
+  group_by(country) %>% 
+  summarise(
+    mean_emotion = mean(mean_feeling, na.rm = TRUE),
+    .groups = "drop"
+  )
+SouthcentralAmerica_emotions_mean %>% 
+  mutate(dev = mean_emotion - 4) %>% 
+  arrange(mean_emotion) %>% 
+  ggplot(aes(y = reorder(country, mean_emotion), x = dev,fill = mean_emotion )) +
+  geom_col(width = 0.3) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7) +
+  scale_fill_gradient(low = "orange", high = "red") +
+  theme_tufte() +
+  labs(title = "Overall emotional landscape – South America/ Central America", x = "", y = "") +
+  theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
+        plot.title  = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "none")+
+  theme(axis.ticks.y = element_blank())
+
+#Oceania
+oceania_emotions_mean = country_emotions_clean %>% 
+  filter(continent == "Oceania") %>% 
+  group_by(country) %>% 
+  summarise(
+    mean_emotion = mean(mean_feeling, na.rm = TRUE),
+    .groups = "drop"
+  )
+oceania_emotions_mean %>% 
+  mutate(dev = mean_emotion - 4) %>% 
+  arrange(mean_emotion) %>% 
+  ggplot(aes(y = reorder(country, mean_emotion), x = dev,fill = mean_emotion )) +
+  geom_col(width = 0.3) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7) +
+  scale_fill_gradient(low = "orange", high = "red") +
+  theme_tufte() +
+  labs(title = "Overall emotional landscape – Oceania", x = "", y = "") +
+  theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
+        plot.title  = element_text(hjust = 0.5, face = "bold"),
+        legend.position = "none")+
+  theme(axis.ticks.y = element_blank())
+
+#Based on Frequency
+
+top10_countries <- country_emotions_clean %>% 
+  count(country, sort = TRUE) %>% 
+  slice_head(n = 10) %>% 
+  pull(country)
+
+country_11_groups <- country_emotions_clean %>% 
+  mutate(
+    country_group = if_else(
+      country %in% top10_countries,
+      country,
+      "Other countries")) %>% 
+  group_by(country_group) %>% 
+  summarise(
+    mean_emotion = mean(mean_feeling, na.rm = TRUE),
+    n = n(),   # optional, but nice to keep
+    .groups = "drop")
+
+country_11_groups %>% 
+  mutate(dev = mean_emotion - 4) %>% 
+  arrange(desc(n)) %>%   # arrange by frequency
+  ggplot(aes(
+    y = reorder(country_group, ifelse(country_group == "Other countries", -Inf, n)),
+    x = dev,
+    fill = mean_emotion)) +
+  geom_col(width = 0.3) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_x_continuous(
+    limits = c(-3, 3),
+    breaks = -3:3,
+    labels = 1:7) +
+  scale_fill_gradient(low = "orange", high = "red") +
+  theme_tufte() +
+  labs(
+    title = "Overall emotional landscape – top 10 countries vs others", x = "", y = "" ) +
+  theme(
+    axis.text.y = element_text(size = 11, angle = 30, vjust = -3),
+    plot.title  = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "none")+
+  theme(axis.ticks.y = element_blank())
+
+
+
 #important sidenote --> if you want to flip the reverse-coded items, multiplying by -1 is not a great approach
 "it is a 7 point likert scale --> the proper way to do that is not to center the mean around 0, but to center
 the mean around the middle of the scale, so 4 --> correct way to do that: if someone has 1 on happy and 7 on sad --> if 7 is flipped by 8-x, so 8-7, then sadness will be worth 1 at the end of the analysis, so it will pull the mean to 0.5 --> and that is correct methodologically 
@@ -386,6 +678,19 @@ data_recoded_mean_feeling = data_recoded %>%
     across(c(feeling_sadness, feeling_anger), ~ 8 - .)
   ) %>% 
   mutate(mean_feeling = rowMeans(across(feeling_interest:feeling_anger)))
+
+position_emotions = position_emotions %>% 
+  select(-22)
+position_emotions = position_emotions %>%   
+  mutate(across(starts_with("feeling_"),
+                ~ as.numeric(as.character(.x)))) %>% 
+  mutate(across(12:21,~ 8 - .x)) %>% 
+  drop_na() %>% 
+  group_by(position) %>%
+  summarise(across(starts_with("feeling_"),
+                   ~ mean(.x, na.rm = TRUE),
+                   .names = "mean_{.col}"))
+position_emotions = position_emotions[-1,]
 
 
 
@@ -667,6 +972,7 @@ ggplot(valence_counts_general,
     y = "Proportion within Valence"
   ) +
   theme_minimal(base_size = 13)
+
 
 
 
