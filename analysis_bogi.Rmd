@@ -60,12 +60,10 @@ raw_renamed <- raw_data %>%
 ```
 ## load functions
 ```{r}
-source("functions.R")
+source("functions_bogi.R")
 ```
 
-
-
-## Emotions By Research Stage
+# Emotions By Research Stage
 ## 1. Emotions during the Data Analysis stage
 ## 1.1 Emotions on the participant-level
 ```{r}
@@ -168,7 +166,7 @@ post_project1_long <- post_project1 %>%
 # geom_col for mean intensity
 post_project1_long %>% 
   plot_overall()
-# most intense emotions if the article was accepted and published: interest, joy, prode, pleasure, relief, contentment (+ admiration, amusement)
+# most intense emotions if the article was accepted and published: interest, joy, pride, pleasure, relief, contentment (+ admiration, amusement)
 
 # 4.2. Accepted but not yet published
 post_project2 <- post_project %>% 
@@ -201,7 +199,26 @@ post_project3_long %>%
 
 ```
 
-## 5. facet_wrap plot for emotional intensity in all research stages
+## 5. Report writing stage - mean intensity of emotions
+```{r}
+report_writing <- raw_renamed %>% 
+  filter(
+    research_stage == "Report writing"
+  ) %>% 
+  select(-dismiss_1, -Q22, -Q22_6_TEXT) 
+
+# mean intensity of emotions
+report_writing_long <- report_writing %>% 
+  longer_heatmap() %>% 
+  sum_analysis()
+
+# geom_col for mean intensity
+report_writing_long %>% 
+  plot_overall()
+```
+
+
+## 6. facet_wrap plot for emotional intensity in all research stages
 ```{r}
 overall_intensity <- raw_renamed %>% 
   rename(duration = `Duration (in seconds)`) %>% 
@@ -221,7 +238,16 @@ overall_long <- overall_intensity %>%
          emotion = factor(emotion, levels = unique(emotion))) %>% 
   group_by(research_stage, emotion) %>% 
   summarise(mean_intensity = mean(intensity, na.rm = T), .groups = "drop") %>% 
-  filter(!(is.na(research_stage)))
+  filter(!(is.na(research_stage))) %>% 
+  mutate(
+    research_stage = 
+      recode(research_stage,
+             "Reality check (e.g., literature search, consultation with colleagues)" = "Reality check", 
+             "Waiting for journal's response and revisions" = "Waiting", 
+             "Project genesis/ first thoughts/ idea creation" = "Project genesis", 
+             "Post-project stage (the project has received a decision (accepted or rejected). At this point, it is either concluded or being revised and prepared for submission to another venue)" = "Post-project stage", 
+             "Preparations (IRB permit, preregistration, experiment preparations)" = "Preparationss"
+    ))
 
 # create plot 
 ggplot(overall_long, aes(x = emotion, y = mean_intensity, fill = intensity)) +
@@ -237,7 +263,7 @@ ggplot(overall_long, aes(x = emotion, y = mean_intensity, fill = intensity)) +
 
 ```
 
-## gender, age, country, area of research, seniority level, category of work -> connections to emotions
+# Gender, age, country, area of research, seniority level, category of work -> connections to emotions
 ```{r}
 ## 1. check difference between genders - make plot (men, women, non-binary and prefer not to say)
 ## 2. t-test to test statistical significance 
@@ -305,7 +331,7 @@ ggplot(summary_genders,
   theme_minimal()
 ```
 
-## Analysis of standard deviations within the emotions 
+# Analysis of standard deviations within the emotions 
 ```{r}
 ## flag where SD of emotions are > 1 
 sd_flag <- raw_renamed %>% 
@@ -334,7 +360,8 @@ great_sd <- sd_flag %>%
   )
 ```
 
-## participants with negative_mean > positive_mean -> age distributions
+## ====================================================================
+# Participants with negative_mean > positive_mean -> age distributions
 ```{r}
 averages_data <- raw_renamed %>% 
   select(
@@ -356,43 +383,15 @@ negative_means <- averages_data %>%
 
 ## classifying the data types of columns
 age_negative <- negative_means %>%
-  mutate(
-    age = as.numeric(age), 
-    gender = as.factor(gender)
-  ) %>% 
-  filter(!is.na(age), !is.na(gender))  
+  pos_neg_classify()
 
+## creating age groups
 age_negative_counts <- age_negative %>% 
-  select(
-    ResponseId, age, gender
-  ) %>% 
-  mutate(
-    age_group = 
-      case_when(
-        (age >= 20 & age <= 30) ~ "20-30", 
-        (age >= 31 & age <= 40) ~ "31-40", 
-        (age >= 41 & age <= 50) ~ "41-50", 
-        (age >= 51 & age <= 60) ~ "51-60", 
-        (age >= 61 & age <= 70) ~ "61-70", 
-        (age >= 71 & age <= 80) ~ "71-80", 
-        (age >= 81 & age <= 90) ~ "81-90", 
-        (age >= 91 & age <= 100) ~ "91-100"
-      ), ## creating age groups, then converting the age_group variable to factor, so that the age_pyramid can be made
-    age_group = factor(
-      age_group,
-      levels = c(
-        "20-30","31-40","41-50","51-60",
-        "61-70","71-80","81-90","91-100")
-      )
-  )
+  age_grouping()
 
 ## pyramid to explore the age distribution, split by gender 
 age_negative_counts %>% 
-  age_pyramid(age_group = age_group, split_by = gender) +
-  labs(
-  x = "Age group", 
-  y = "Number of people", 
-  title = "Age distribution chart")
+  pyramid_plot()
 ```
 ## participants with negative_mean > positive_mean -> position
 ```{r}
@@ -437,8 +436,78 @@ stage_negative <- negative_means %>%
 stage_negative %>% 
   piechart_plot()
 ```
-### Distributions of positive-negative emotions by research stage
-## 1. Positive emotions:
+
+## ====================================================================
+# Participants with positive_mean > negative_mean -> age distributions
+```{r}
+positive_means <- averages_data %>% 
+  filter(
+    ((pos_mean > neg_mean) | is.na(neg_mean)), 
+    !is.na(pos_mean)
+  ) 
+
+## classifying the data types of columns
+age_positive <- positive_means %>%
+  pos_neg_classify()
+
+## creating age groups
+age_positive_counts <- age_negative %>% 
+  age_grouping()
+
+## creating the age pyramid
+age_positive_counts %>% 
+  pyramid_plot()
+
+```
+
+## participants with negative_mean > positive_mean -> position
+```{r}
+position_positive <- positive_means %>%
+  rename(category = position) %>% ## rename column for functions
+  categories_prepare()
+
+## pie chart for the distribution of positions
+position_positive %>% 
+  piechart_plot()
+```
+
+## participants with negative_mean > positive_mean -> category_of_work
+```{r}
+work_positive <- positive_means %>% 
+  rename(category = category_of_work) %>% ## rename column for the functions
+  categories_prepare()
+
+## pie chart for the distribution of the categories
+work_positive %>% 
+  piechart_plot()
+
+```
+## participants with negative_mean > positive_mean -> research area 
+```{r}
+area_positive <- positive_means %>% 
+  rename(category = area) %>% ## rename column for the functions
+  categories_prepare()
+
+area_positive %>% 
+  piechart_plot()
+```
+## participants with negative_mean > positive_mean -> research stage
+```{r}
+stage_positive <- positive_means %>% 
+  rename(category = research_stage) %>% ## rename column for functions 
+  categories_prepare() %>% 
+  mutate(
+    category = stringr::str_trunc(category, 40))
+
+## piechart plot
+stage_positive %>% 
+  piechart_plot()
+```
+
+
+## ========================================================================
+# Distributions of positive-negative emotions by research stage
+## 1. Interest:
 ```{r}
 # 1.1. Interest (first try)
 interest_distribution <- raw_renamed %>% 
@@ -458,8 +527,9 @@ interest_distribution %>%
       title = "Intensity of 'interest' through the research stages", tag = "2.") +
     theme(
       axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
-
-## facet_wrap plot for all emotions in the research stages
+```
+## 2. Facet_wrap plot for all emotions in the research stages
+```{r}
 all_distribution <- raw_renamed %>% 
   select(
     research_stage, interest:anger
@@ -472,7 +542,8 @@ all_distribution <- raw_renamed %>%
     names_to = "emotion", 
     values_to = "intensity", 
     values_drop_na = T
-  )
+  ) %>% 
+  mutate(emotion = factor(emotion, levels = unique(emotion)))
 
 all_distribution %>% 
   ggplot(aes(x = research_stage, y = intensity)) +
@@ -483,5 +554,67 @@ all_distribution %>%
       title = "Intensity of all emotions through the research stages") +
     theme(
       axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, size = 6)) 
-
 ```
+
+## ===================================================================
+# Analyses to NA data regarding the emotions (emotions that were 'not felt')
+```{r}
+## df for counting NA values by research stage
+na_counter <- raw_renamed %>% 
+  select(
+    ResponseId, interest:anger, research_stage
+  ) %>% 
+  filter(!(is.na(research_stage))) %>% 
+  group_by(research_stage) %>% 
+  summarise(
+    across(interest:anger, ~ sum(is.na(.))))
+
+## Data analysis stage - long format for the barchart
+data_analysis_na <- na_counter %>% 
+  filter(research_stage == "Data analysis") %>% 
+  pivot_longer(
+    cols = -research_stage, 
+    names_to = "emotion", 
+    values_to = "na_count"
+  )
+
+## -> Barchart
+data_analysis_na %>% 
+  ggplot(aes(emotion, na_count)) +
+  geom_bar(stat = "identity", fill = "#98B774") +
+  theme(
+    axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
+    legend.position = "none") +
+  labs(
+      title = "NA values in the Data Analysis stage")
+
+## All stages -> facet_wrap
+na_all <- na_counter %>%
+  mutate(
+    research_stage = 
+      recode(research_stage,
+             "Reality check (e.g., literature search, consultation with colleagues)" = "Reality check", 
+             "Waiting for journal's response and revisions" = "Waiting", 
+             "Project genesis/ first thoughts/ idea creation" = "Project genesis", 
+             "Post-project stage (the project has received a decision (accepted or rejected). At this point, it is either concluded or being revised and prepared for submission to another venue)" = "Post-project stage", 
+             "Preparations (IRB permit, preregistration, experiment preparations)" = "Preparationss"
+    )) %>% 
+  pivot_longer(
+    cols = -research_stage, 
+    names_to = "emotion", 
+    values_to = "na_count"
+  )
+
+## -> Barchart for all stages
+na_all %>% 
+  ggplot(aes(emotion, na_count)) +
+  facet_wrap(
+    ~ research_stage) +
+  geom_bar(stat = "identity", fill = "#FB8C00") +
+  theme(
+    axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
+    legend.position = "none") +
+  labs(
+      title = "NA values in the research stages")
+```
+
