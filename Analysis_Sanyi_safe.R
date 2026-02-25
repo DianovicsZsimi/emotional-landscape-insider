@@ -7,6 +7,7 @@ library(stringr)
 library(rstatix)
 library(ggthemes)
 library(tidyr)
+library(patchwork)
 
 raw_data = read.csv("C:/Emotional landscape/raw_data.csv")
 
@@ -76,293 +77,331 @@ category_of_work_count = data_recoded %>%
   count(category_of_work) %>% 
   slice(-1)
 
-plot_resarch_stage_count = research_stage_count %>%
-  arrange(n) %>%
-  mutate(research_stage = reorder(research_stage, n)) %>%
-  ggplot(aes(x = research_stage, y = n)) +
-  geom_col(width = 0.7) +
-  geom_text(aes(label = n),
-            hjust = -0.1,
-            size = 4) +
-  coord_flip() +
-  theme_tufte() +
-  theme(plot.title = element_text(face = "bold", hjust = 0.5))
-  labs(x = NULL,
-       y = "Count (n)",
-       title = "Research Stage") +
-  expand_limits(y = max(research_stage_count$n) * 1.1)
-plot_resarch_stage_count
+droplevels(research_stage_count$research_stage)
+droplevels(area_count$area)
+droplevels(gender_count$gender)
+droplevels(position_count$position)
+droplevels(category_of_work_count$category_of_work)
 
-plot_area_count = area_count %>%
-  arrange(n) %>%
-  mutate(area = reorder(area, n)) %>%
-  ggplot(aes(x = area, y = n)) +
-  geom_col(width = 0.7) +
-  geom_text(aes(label = n),
-            hjust = -0.1,
-            size = 4) +
-  coord_flip() +
-  theme_tufte() +
-  theme(plot.title = element_text(face = "bold", hjust = 0.5)) +
-  labs(x = NULL,
-       y = "Count (n)",
-       title = "Area") +
-  expand_limits(y = max(area_count$n) * 1.1)
-plot_area_count
+descriptive_plot_function <- function(data, category_var, count_var, title_text) {
+  
+  max_n <- max(pull(data, {{ count_var }}), na.rm = TRUE)
+  
+  data %>%
+    arrange({{ count_var }}) %>%
+    mutate({{ category_var }} := reorder({{ category_var }}, {{ count_var }})) %>%
+    ggplot(aes(x = {{ category_var }}, y = {{ count_var }})) +
+    geom_col(width = 0.7) +
+    geom_text(aes(label = {{ count_var }}),
+              hjust = -0.1,
+              size = 4) +
+    coord_flip() +
+    theme_tufte() +
+    theme(plot.title = element_text(face = "bold", hjust = 0.5)) +
+    labs(x = NULL,
+         y = "Count (n)",
+         title = title_text) +
+    expand_limits(y = max_n * 1.1)}
 
 
 
+descriptive_plot_function(research_stage_count, research_stage, n, "Research Stage")
+descriptive_plot_function(gender_count, gender, n, "Gender")
+descriptive_plot_function(area_count, area, n, "Area")
+descriptive_plot_function(position_count, position, n, "Position")
+descriptive_plot_function(category_of_work_count, category_of_work, n, "Category of Work")
 
-plot_gender_count = gender_count %>%
-  arrange(n) %>%
-  mutate(gender = reorder(gender, n)) %>%
-  ggplot(aes(x = gender, y = n)) +
-  geom_col(width = 0.7) +
-  geom_text(aes(label = n),
-            hjust = -0.1,
-            size = 4) +
-  coord_flip() +
-  theme_tufte() +
-  theme(plot.title = element_text(face = "bold", hjust = 0.5)) +
-  labs(x = NULL,
-       y = "Count (n)",
-       title = "Gender") +
-  expand_limits(y = max(gender_count$n) * 1.1)
 
-plot_gender_count
+#Functions and setup
+emotion_function = function(data, catvar) {
+  data %>%   
+    group_by({{catvar}}) %>%
+    summarise(across(starts_with("feeling_"),
+                     ~ mean(.x, na.rm = TRUE),
+                     .names = "mean_{.col}"))
+}
 
-plot_position_count = position_count %>%
-  arrange(n) %>%
-  mutate(position = reorder(position, n)) %>%
-  ggplot(aes(x = position, y = n)) +
-  geom_col(width = 0.7) +
-  geom_text(aes(label = n),
-            hjust = -0.1,
-            size = 4) +
-  coord_flip() +
-  theme_tufte() +
-  theme(plot.title = element_text(face = "bold", hjust = 0.5)) +
-  labs(x = NULL,
-       y = "Count (n)",
-       title = "Position") +
-  expand_limits(y = max(position_count$n) * 1.1)
+mean_function = function(data, catvar) {
+  data %>% 
+    mutate(mean_emotion = rowMeans(across(c(starts_with("mean_"))))) %>% 
+    select({{catvar}}, mean_emotion) %>% 
+    arrange(mean_emotion)
+}
 
-plot_position_count
+overall_emotion_plot <- function(data, group_var, mean_var,
+                                 title_text = "Overall Emotional Landscape") {
+  
+  data %>%
+    mutate(dev = {{ mean_var }} - 4) %>%
+    arrange({{ mean_var }}) %>%
+    ggplot(aes(
+      y    = reorder({{ group_var }}, {{ mean_var }}),
+      x    = dev,
+      fill = {{ mean_var }})) +
+    geom_col(width = 0.3) +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    scale_x_continuous(
+      limits = c(-3, 3),
+      breaks = -3:3,
+      labels = 1:7) +
+    scale_fill_gradient(low = "orange", high = "red") +
+    theme_tufte() +
+    labs(
+      title = title_text,
+      x = "",
+      y = ""
+    ) +
+    theme(
+      axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      legend.position = "none"
+    )
+}
 
-plot_category_of_work_count = category_of_work_count %>%
-  arrange(n) %>%
-  mutate(category_of_work = reorder(category_of_work, n)) %>%
-  ggplot(aes(x = category_of_work, y = n)) +
-  geom_col(width = 0.7) +
-  geom_text(aes(label = n),
-            hjust = -0.1,
-            size = 4) +
-  coord_flip() +
-  theme_tufte() +
-  theme(plot.title = element_text(face = "bold", hjust = 0.5)) +
-  labs(x = NULL,
-       y = "Count (n)",
-       title = "Category of Work") +
-  expand_limits(y = max(category_of_work_count$n) * 1.1)
+data_recoded_clean = data_recoded %>% 
+  select(gender, position, research_stage, category_of_work,
+         country, country_other, area, starts_with("feeling_")) %>% 
+  mutate(across(8:27, ~ na_if(.x, 0))) %>% 
+  mutate(NAcount = rowSums(is.na(across(7:26)))) %>%
+  mutate(across(18:27, ~ 8 - .x)) %>% 
+  select(-28) %>% 
+  filter(!if_all(starts_with("feeling_"), is.na))
 
-plot_category_of_work_count
+positive_feelings <- c(
+  "feeling_interest","feeling_amusement","feeling_pride","feeling_joy","feeling_pleasure",
+  "feeling_contentment","feeling_love","feeling_admiration","feeling_relief","feeling_compassion"
+)
+negative_feelings <- c("feeling_sadness", "feeling_guilt", "feeling_regret" ,"feeling_shame", 
+                       "feeling_disappointment" , "feeling_fear", "feeling_disgust", "feeling_contempt" , "feeling_hate", "feeling_anger")
+
+overall_emotion_plot_valence <- function(data, group_var, mean_var, color_low = "orange", color_high = "red",
+                            title_text = "Overall Emotional Landscape")
+  {
+  data %>%
+    arrange({{ mean_var }}) %>%
+    ggplot(aes(
+      y    = reorder({{ group_var }}, {{ mean_var }}),
+      x    = {{ mean_var }}, 
+      fill = {{mean_var}})) +
+    geom_col(width = 0.3) +
+    scale_x_continuous(
+      limits = c(0, 7),
+      breaks = 0:7,
+      labels = 0:7) +
+    scale_fill_gradient(low = {{color_low}}, high = {{color_high}}) +
+    theme_tufte()+
+    labs(
+      title = title_text,
+      x = "",
+      y = "") +
+    theme(
+      axis.text.y   = element_text(size = 11, angle = 45, vjust = -3),
+      plot.title    = element_text(hjust = 0.5, face = "bold"),
+      legend.position = "none")
+}
 
 
 
 #overall emotions visualization by gender
-
-gender_emotions = data_recoded %>% 
-  select(gender, starts_with("feeling_") )
+gender_emotions = data_recoded_clean %>% 
+  select(gender, starts_with("feeling_")) %>% 
+  filter(!(gender == ""))
 gender_emotions = gender_emotions %>%  
   mutate(gender = if_else(gender == "Non-binary / third gender / gender non-conforming", "non-binary", gender)) %>% 
   mutate(gender = factor(gender))
-
-gender_emotions = gender_emotions %>% 
-  select(-22)
-gender_emotions = gender_emotions %>%   
-  mutate(across(12:21, ~ 8 - .x)) %>% 
-  drop_na() %>% 
-  group_by(gender) %>% 
-  summarise(
-    across(
-      .cols = starts_with("feeling_"),
-      .fns  = ~ {
-        x <- .x
-        x <- x[!is.na(x) & x != 0]
-        if (length(x) == 0) NA_real_ else mean(x)},.names = "mean_{.col}"))
-
-gender_emotions_mean = gender_emotions %>% 
-  mutate(mean_emotion = rowMeans(across(c(starts_with("mean_"))))) %>% 
-  select(gender, mean_emotion) %>% 
-  arrange(mean_emotion) 
-
-gender_emotions_mean %>% 
-  mutate(dev = mean_emotion - 4) %>% 
-  arrange(mean_emotion) %>% 
-  ggplot(aes(y = reorder(gender, mean_emotion),
-             x = dev,
-             fill = mean_emotion)) +
-  geom_col(width = 0.3) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  scale_x_continuous(
-    limits = c(-3, 3),
-    breaks = -3:3,
-    labels = 1:7
-  ) +
-  scale_fill_gradient(low = "orange", high = "red") +
-  theme_tufte() +
-  labs(title = "Overall Emotional Landscape per Gender",
-       x = "",
-       y = "") +
-  theme(
-    axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
-    plot.title = element_text(hjust = 0.5, face = "bold"),
-    legend.position = "none"
-  )
-
-
-#overall emotions visualization by research stage
-
-research_stage_emotions = data_recoded %>% 
-  select(research_stage, starts_with("feeling_"))
-
-research_stage_emotions = research_stage_emotions %>% 
-  mutate(
-    across(2:21, ~ na_if(.x, 0))
-  )
-
-summary(research_stage_emotions)
-research_stage_emptions = research_stage_emotions
-
-research_stage_emotions = research_stage_emotions %>% 
-  select(-22)
-research_stage_emotions = research_stage_emotions %>%   
-  mutate(across(12:21, ~ 8 - .x)) %>% 
-  drop_na() %>% 
-  group_by(research_stage) %>% 
-  summarise(
-    across(.cols = starts_with("feeling_"),
-      .fns  = ~ { x <- .x
-        x <- x[!is.na(x) & x != 0]
-        if (length(x) == 0) NA_real_ else mean(x)},.names = "mean_{.col}"))
-
-research_stage_emotions_mean = research_stage_emotions %>% 
-  mutate(mean_emotion = rowMeans(across(c(starts_with("mean_"))))) %>% 
-  select(research_stage, mean_emotion) %>% 
-  arrange(mean_emotion)
- 
-research_stage_emotions_mean %>% 
-  mutate(dev = mean_emotion - 4) %>% 
-  arrange(mean_emotion) %>% 
-  ggplot(aes(y = reorder(research_stage, mean_emotion),
-             x = dev,
-             fill = mean_emotion)) +
-  geom_col(width = 0.3) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  scale_x_continuous(
-    limits = c(-3, 3),
-    breaks = -3:3,
-    labels = 1:7
-  ) +
-  scale_fill_gradient(low = "orange", high = "red") +
-  theme_tufte() +
-  labs(title = "Overall emotional landscape per research_stage", x = "",
-       y = "") +
-  theme(
-    axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
-    plot.title = element_text(hjust = 0.5, face = "bold"),
-    legend.position = "none"
-  )
-
+gender_emotions_positive = gender_emotions %>% 
+  select(gender, all_of(positive_feelings))
+gender_emotions_negative = gender_emotions %>% 
+  select(gender, all_of(negative_feelings))
   
 
+gender_emotions = emotion_function(gender_emotions, gender)
+
+gender_emotions_mean = mean_function(gender_emotions, gender)
+
+gender_emotions_positive = emotion_function(gender_emotions_positive, gender)
+
+gender_emotions_mean_positive = mean_function(gender_emotions_positive, gender)
+
+gender_emotions_negative = emotion_function(gender_emotions_negative, gender)
+
+gender_emotions_mean_negative = mean_function(gender_emotions_negative, gender)
+
+
+gender_pos = overall_emotion_plot_valence(gender_emotions_mean_positive, gender, mean_emotion, color_low = "orange", color_high = "red",
+                             "Positive Emotions")
+
+gender_neg = overall_emotion_plot_valence(gender_emotions_mean_negative, gender, mean_emotion, color_low = "lightblue", 
+                     color_high = "blue", "Negative Emotions")
+
+overall_emotion_plot(gender_emotions_mean, gender, mean_emotion,
+                             "Overall Emotional Landscape by Gender")
+combined_gender = gender_pos+gender_neg
+
+combined_gender
+#overall emotions visualization by research stage
+
+research_stage_emotions = data_recoded_clean %>% 
+  select(research_stage, starts_with("feeling_")) %>% 
+  filter(!(research_stage == ""))
+research_stage_emotions_positive = research_stage_emotions %>% 
+  select(research_stage, all_of(positive_feelings))
+research_stage_emotions_negative = research_stage_emotions %>% 
+  select(research_stage, all_of(negative_feelings))
+
+
+"OR"
+
+
+research_stage_emotions = data_recoded_clean %>% 
+  filter(!(NAcount > 10)) %>% 
+  select(research_stage, starts_with("feeling_")) %>% 
+  filter(!(research_stage == ""))
+
+research_stage_emotions = emotion_function(research_stage_emotions, research_stage)
+
+research_stage_emotions_mean = mean_function(research_stage_emotions, research_stage)
+
+research_stage_emotions_positive = emotion_function(research_stage_emotions_positive, research_stage)
+
+research_stage_emotions_mean_positive = mean_function(research_stage_emotions_positive, research_stage)
+
+research_stage_emotions_negative = emotion_function(research_stage_emotions_negative, research_stage)
+
+research_stage_emotions_mean_negative = mean_function(research_stage_emotions_negative, research_stage)
+
+
+research_stage_pos = overall_emotion_plot_valence(
+  research_stage_emotions_mean_positive,
+  research_stage,
+  mean_emotion,
+  color_low = "orange",
+  color_high = "red",
+  "Positive Emotions"
+)
+
+research_stage_neg = overall_emotion_plot_valence(
+  research_stage_emotions_mean_negative,
+  research_stage,
+  mean_emotion,
+  color_low = "lightblue",
+  color_high = "blue",
+  "Negative Emotions"
+)
+
+overall_emotion_plot(
+  research_stage_emotions_mean,
+  research_stage,
+  mean_emotion,
+  "Overall Emotional Landscape by Research Stage")
+
+combined_research_stage = research_stage_pos + research_stage_neg
+research_stage_neg
+research_stage_pos
+combined_research_stage
+
 #overall emotion visualization area
-area_emotions = data_recoded %>% 
-  select(area, starts_with("feeling_") )
+area_emotions = data_recoded_clean %>% 
+  select(area, starts_with("feeling_")) %>% 
+  filter(!(area == ""))
+area_emotions_positive = area_emotions %>%
+select(area, all_of(positive_feelings))
+area_emotions_negative = area_emotions %>% 
+  select(area, all_of(negative_feelings))
+
+area_emotions = emotion_function(area_emotions, area)
+
+area_emotions_mean = mean_function(area_emotions, area)
+
+area_emotions_positive = emotion_function(area_emotions_positive, area)
+
+area_emotions_mean_positive = mean_function(area_emotions_positive, area)
+
+area_emotions_negative = emotion_function(area_emotions_negative, area)
+
+area_emotions_mean_negative = mean_function(area_emotions_negative, area)
 
 
-area_emotions = area_emotions %>% 
-  select(-22)
-area_emotions = area_emotions %>%   
-  mutate(across(starts_with("feeling_"),
-                ~ as.numeric(as.character(.x)))) %>% 
-  mutate(across(12:21, ~ 8 - .x)) %>% 
-  drop_na() %>% 
-  group_by(area) %>%
-  summarise(across(starts_with("feeling_"),
-                   ~ mean(.x, na.rm = TRUE),
-                   .names = "mean_{.col}"))
-area_emotions = area_emotions[-1,]
+area_pos = overall_emotion_plot_valence(
+  area_emotions_mean_positive,
+  area,
+  mean_emotion,
+  color_low = "orange",
+  color_high = "red",
+  "Positive Emotions"
+)
 
-area_emotions_mean = area_emotions %>% 
-  mutate(mean_emotion = rowMeans(across(c(starts_with("mean_"))))) %>% 
-  select(area, mean_emotion) %>% 
-  arrange(mean_emotion)
+area_neg = overall_emotion_plot_valence(
+  area_emotions_mean_negative,
+  area,
+  mean_emotion,
+  color_low = "lightblue",
+  color_high = "blue",
+  "Negative Emotions"
+)
 
-area_emotions_mean %>% 
-  mutate(dev = mean_emotion - 4) %>% 
-  arrange(mean_emotion) %>% 
-  ggplot(aes(y = reorder(area, mean_emotion),
-             x = dev,
-             fill = mean_emotion)) +
-  geom_col(width = 0.3) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  scale_x_continuous(
-    limits = c(-3, 3),
-    breaks = -3:3,
-    labels = 1:7
-  ) +
-  scale_fill_gradient(low = "orange", high = "red") +
-  theme_tufte() +
-  labs(title = "Overall emotional landscape per field",
-       x = "",
-       y = "") +
-  theme(
-    axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
-    plot.title = element_text(hjust = 0.5, face = "bold"),
-    legend.position = "none"
-  )
+overall_emotion_plot(
+  area_emotions_mean,
+  area,
+  mean_emotion,
+  "Overall Emotional Landscape by Area"
+)
 
+combined_area = area_pos + area_neg
+
+combined_area
 
 #overall emotions position-wise visualization
-position_emotions = data_recoded %>% 
-  select(position, starts_with("feeling_") )
+position_emotions = data_recoded_clean %>% 
+  filter(!(position == "")) %>% 
+  select(position, starts_with("feeling_"))
+position_emotions_positive = position_emotions %>%
+  select(position, all_of(positive_feelings))
+position_emotions_negative = position_emotions %>% 
+  select(position, all_of(negative_feelings))
 
-position_emotions = position_emotions %>% 
-  select(-22)
-position_emotions = position_emotions %>%   
-  mutate(across(starts_with("feeling_"),
-                ~ as.numeric(as.character(.x)))) %>% 
-  mutate(across(12:21,~ 8 - .x)) %>% 
-  drop_na() %>% 
-  group_by(position) %>%
-  summarise(across(starts_with("feeling_"),
-                   ~ mean(.x, na.rm = TRUE),
-                   .names = "mean_{.col}"))
-position_emotions = position_emotions[-1,]
 
-position_emotions_mean = position_emotions %>% 
-  mutate(mean_emotion = rowMeans(across(c(starts_with("mean_"))))) %>% 
-  select(position, mean_emotion) %>% 
-  arrange(mean_emotion)
+position_emotions = emotion_function(position_emotions, position)
 
-position_emotions_mean %>% 
-  mutate(dev = mean_emotion - 4) %>% 
-  arrange(mean_emotion) %>% 
-  ggplot(aes( y = reorder(position, mean_emotion), x = dev, fill = mean_emotion)) +
-  geom_col(width = 0.3) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  scale_x_continuous(
-    limits = c(-3, 3),
-    breaks = -3:3,
-    labels = 1:7) +
-  scale_fill_gradient(low = "orange", high = "red") +
-  theme_tufte() +
-  labs(title = "Overall emotional landscape per position", x = "", y = "") +
-  theme( axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
-    plot.title = element_text(hjust = 0.5, face = "bold"),
-    legend.position = "none" )
+position_emotions_mean = mean_function(position_emotions, position)
 
+position_emotions_positive = emotion_function(position_emotions_positive, position)
+
+position_emotions_mean_positive = mean_function(position_emotions_positive, position)
+
+position_emotions_negative = emotion_function(position_emotions_negative, position)
+
+position_emotions_mean_negative = mean_function(position_emotions_negative, position)
+
+
+position_pos = overall_emotion_plot_valence(
+  position_emotions_mean_positive,
+  position,
+  mean_emotion,
+  color_low = "orange",
+  color_high = "red",
+  "Positive Emotions"
+)
+
+position_neg = overall_emotion_plot_valence(
+  position_emotions_mean_negative,
+  position,
+  mean_emotion,
+  color_low = "lightblue",
+  color_high = "blue",
+  "Negative Emotions"
+)
+
+overall_emotion_plot(
+  position_emotions_mean,
+  position,
+  mean_emotion,
+  "Overall Emotional Landscape by Position"
+)
+
+combined_position = position_pos + position_neg
+
+combined_position
 
 combined_emotions <- bind_rows(
   area_emotions_mean %>% 
@@ -485,143 +524,56 @@ country_emotions_clean = country_emotions_clean %>%
   mutate(country = factor(country))
 levels(country_emotions_clean$country)
 
+
+continent_plot_function = function(data, title_text){
+ data %>% 
+   mutate(dev = mean_emotion - 4) %>% 
+    arrange(mean_emotion) %>% 
+    ggplot(aes(y = reorder(country, mean_emotion), x = dev,fill = mean_emotion )) +
+    geom_col(width = 0.3) +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7) +
+    scale_fill_gradient(low = "orange", high = "red") +
+    theme_tufte() +
+    labs(title = {{title_text}}, x = "", y = "") +
+    theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
+          plot.title  = element_text(hjust = 0.5, face = "bold"),
+          legend.position = "none")
+  
+}
+
+continent_emotions_mean_function <- function(data, continent_name) {
+  data %>%
+    filter(continent == continent_name) %>%
+    group_by(country) %>%
+    summarise(
+      mean_emotion = mean(mean_feeling, na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+
 #Europe
-europe_emotions_mean <- country_emotions_clean %>% 
-  filter(continent == "Europe") %>% 
-  group_by(country) %>% 
-  summarise(
-    mean_emotion = mean(mean_feeling, na.rm = TRUE),
-    .groups = "drop"
-  )
-europe_emotions_mean %>% 
-  mutate(dev = mean_emotion - 4) %>% 
-  arrange(mean_emotion) %>% 
-  ggplot(aes(y = reorder(country, mean_emotion), x = dev,fill = mean_emotion )) +
-  geom_col(width = 0.3) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7) +
-  scale_fill_gradient(low = "orange", high = "red") +
-  theme_tufte() +
-  labs(title = "Overall emotional landscape – Europe", x = "", y = "") +
-  theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
-    plot.title  = element_text(hjust = 0.5, face = "bold"),
-    legend.position = "none")
+europe_emotions_mean = continent_emotions_mean_function(country_emotions_clean, "Europe")
+continent_plot_function(europe_emotions_mean, "Overall Emotional Landscape - Europe")
 
 #Asia
-asia_emotions_mean = country_emotions_clean %>% 
-  filter(continent == "Asia") %>% 
-  group_by(country) %>% 
-  summarise(
-    mean_emotion = mean(mean_feeling, na.rm = TRUE),
-    .groups = "drop"
-  )
-asia_emotions_mean %>% 
-  mutate(dev = mean_emotion - 4) %>% 
-  arrange(mean_emotion) %>% 
-  ggplot(aes(y = reorder(country, mean_emotion), x = dev,fill = mean_emotion )) +
-  geom_col(width = 0.3) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7) +
-  scale_fill_gradient(low = "orange", high = "red") +
-  theme_tufte() +
-  labs(title = "Overall emotional landscape – Asia", x = "", y = "") +
-  theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
-        plot.title  = element_text(hjust = 0.5, face = "bold"),
-        legend.position = "none")+
-  theme(axis.ticks.y = element_blank())
+asia_emotions_mean = continent_emotions_mean_function(country_emotions_clean, "Asia")
+continent_plot_function(asia_emotions_mean, "Overall Emotional Landscape - Asia")
 
 #Africa
-africa_emotions_mean = country_emotions_clean %>% 
-  filter(continent == "Africa") %>% 
-  group_by(country) %>% 
-  summarise(
-    mean_emotion = mean(mean_feeling, na.rm = TRUE),
-    .groups = "drop"
-  )
-africa_emotions_mean %>% 
-  mutate(dev = mean_emotion - 4) %>% 
-  arrange(mean_emotion) %>% 
-  ggplot(aes(y = reorder(country, mean_emotion), x = dev,fill = mean_emotion )) +
-  geom_col(width = 0.3) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7) +
-  scale_fill_gradient(low = "orange", high = "red") +
-  theme_tufte() +
-  labs(title = "Overall emotional landscape – Africa", x = "", y = "") +
-  theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
-        plot.title  = element_text(hjust = 0.5, face = "bold"),
-        legend.position = "none")+
-  theme(axis.ticks.y = element_blank())
-
+africa_emotions_mean = continent_emotions_mean_function(country_emotions_clean, "Africa")
+continent_plot_function(africa_emotions_mean, "Overall Emotional Landscape - Africa")
 #North America
-NorthAmerica_emotions_mean = country_emotions_clean %>% 
-  filter(continent == "North America") %>% 
-  group_by(country) %>% 
-  summarise(
-    mean_emotion = mean(mean_feeling, na.rm = TRUE),
-    .groups = "drop"
-  )
-NorthAmerica_emotions_mean %>% 
-  mutate(dev = mean_emotion - 4) %>% 
-  arrange(mean_emotion) %>% 
-  ggplot(aes(y = reorder(country, mean_emotion), x = dev,fill = mean_emotion )) +
-  geom_col(width = 0.3) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7) +
-  scale_fill_gradient(low = "orange", high = "red") +
-  theme_tufte() +
-  labs(title = "Overall emotional landscape – North America", x = "", y = "") +
-  theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
-        plot.title  = element_text(hjust = 0.5, face = "bold"),
-        legend.position = "none")+
-  theme(axis.ticks.y = element_blank())
-
+NorthAmerica_emotions_mean = continent_emotions_mean_function(country_emotions_clean, "North America")
+continent_plot_function(NorthAmerica_emotions_mean, "Overall Emotional Landscape - North America")
 
 #South America/ Central America
-SouthcentralAmerica_emotions_mean = country_emotions_clean %>% 
-  filter(continent == "South America/ Central America") %>% 
-  group_by(country) %>% 
-  summarise(
-    mean_emotion = mean(mean_feeling, na.rm = TRUE),
-    .groups = "drop"
-  )
-SouthcentralAmerica_emotions_mean %>% 
-  mutate(dev = mean_emotion - 4) %>% 
-  arrange(mean_emotion) %>% 
-  ggplot(aes(y = reorder(country, mean_emotion), x = dev,fill = mean_emotion )) +
-  geom_col(width = 0.3) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7) +
-  scale_fill_gradient(low = "orange", high = "red") +
-  theme_tufte() +
-  labs(title = "Overall emotional landscape – South America/ Central America", x = "", y = "") +
-  theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
-        plot.title  = element_text(hjust = 0.5, face = "bold"),
-        legend.position = "none")+
-  theme(axis.ticks.y = element_blank())
+SouthAmerica_emotions_mean = continent_emotions_mean_function(country_emotions_clean, "South America/ Central America")
+continent_plot_function(SouthAmerica_emotions_mean, "Overall Emotional Landscape - South America/Central America")
 
 #Oceania
-oceania_emotions_mean = country_emotions_clean %>% 
-  filter(continent == "Oceania") %>% 
-  group_by(country) %>% 
-  summarise(
-    mean_emotion = mean(mean_feeling, na.rm = TRUE),
-    .groups = "drop"
-  )
-oceania_emotions_mean %>% 
-  mutate(dev = mean_emotion - 4) %>% 
-  arrange(mean_emotion) %>% 
-  ggplot(aes(y = reorder(country, mean_emotion), x = dev,fill = mean_emotion )) +
-  geom_col(width = 0.3) +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7) +
-  scale_fill_gradient(low = "orange", high = "red") +
-  theme_tufte() +
-  labs(title = "Overall emotional landscape – Oceania", x = "", y = "") +
-  theme(axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
-        plot.title  = element_text(hjust = 0.5, face = "bold"),
-        legend.position = "none")+
-  theme(axis.ticks.y = element_blank())
+oceania_emotions_mean = continent_emotions_mean_function(country_emotions_clean, "Oceania")
+continent_plot_function(oceania_emotions_mean, "Overall Emotional Landscape - Oceania")
 
 #Based on Frequency
 
@@ -664,46 +616,6 @@ country_11_groups %>%
     plot.title  = element_text(hjust = 0.5, face = "bold"),
     legend.position = "none")+
   theme(axis.ticks.y = element_blank())
-
-
-
-#important sidenote --> if you want to flip the reverse-coded items, multiplying by -1 is not a great approach
-"it is a 7 point likert scale --> the proper way to do that is not to center the mean around 0, but to center
-the mean around the middle of the scale, so 4 --> correct way to do that: if someone has 1 on happy and 7 on sad --> if 7 is flipped by 8-x, so 8-7, then sadness will be worth 1 at the end of the analysis, so it will pull the mean to 0.5 --> and that is correct methodologically 
-Because: if the mean would be centered around 0 with with a negative flip, the scale would be stretched artificially"
-data_recoded_mean_feeling = data_recoded %>% 
-  mutate(across(starts_with("feeling_"),
-                ~ as.numeric(as.character(.x)))) %>% 
-  mutate(
-    across(c(feeling_sadness, feeling_anger), ~ 8 - .)
-  ) %>% 
-  mutate(mean_feeling = rowMeans(across(feeling_interest:feeling_anger)))
-
-position_emotions = position_emotions %>% 
-  select(-22)
-position_emotions = position_emotions %>%   
-  mutate(across(starts_with("feeling_"),
-                ~ as.numeric(as.character(.x)))) %>% 
-  mutate(across(12:21,~ 8 - .x)) %>% 
-  drop_na() %>% 
-  group_by(position) %>%
-  summarise(across(starts_with("feeling_"),
-                   ~ mean(.x, na.rm = TRUE),
-                   .names = "mean_{.col}"))
-position_emotions = position_emotions[-1,]
-
-
-
-#Analysis - valszeg ANOVA-t nem tudunk csinálni, mivel túl sok a missing datapoint --> csak na-k kizárásával lehetne
-mod1 = lm(mean_feeling ~ area, data = data_recoded_mean_feeling)
-mod1  
-summary(mod1)
-
-mod2 = lm(mean_feeling ~ research_stage+position, data = data_recoded_mean_feeling)
-summary(mod2)
-
-mod3 = lm(mean_feeling ~ country, data = data_recoded_mean_feeling)
-summary(mod3)
 
 #Content Analysis of the responses of participants to specific feelings
 feeling_cols <- c(
