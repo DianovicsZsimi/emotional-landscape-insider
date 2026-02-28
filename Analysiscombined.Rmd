@@ -25,6 +25,78 @@ library(rlang)
 #data formatting, setup
 ```{r}
 source("D:/Emotional landscape/functionscombined.R")
+raw_data <- read.csv("D:/Emotional landscape/raw_data.csv")
+
+data_recoded = raw_data[-1:-2, ]
+
+
+data_recoded = data_recoded %>% 
+  rename(interest = feeling_stage_1,
+         amusement = feeling_stage_2,
+         pride = feeling_stage_3,
+         joy = feeling_stage_4,
+         pleasure = feeling_stage_5,
+         contentment = feeling_stage_6,
+         love = feeling_stage_7, 
+         admiration = feeling_stage_8, 
+         relief = feeling_stage_9, 
+         compassion = feeling_stage_10,
+         sadness = feeling_stage_11, 
+         guilt = feeling_stage_12,
+         regret = feeling_stage_13, 
+         shame = feeling_stage_14, 
+         disappointment = feeling_stage_15, 
+         fear = feeling_stage_16, 
+         disgust = feeling_stage_17, 
+         contempt = feeling_stage_18,
+         hate = feeling_stage_19, 
+         anger = feeling_stage_20)%>% 
+  mutate(research_stage = factor(research_stage)) %>% 
+  mutate(area = factor(area)) %>% 
+  mutate(gender = factor(gender)) %>% 
+  mutate(position = factor(position)) %>% 
+  mutate(category_of_work = factor(category_of_work)) %>% 
+  mutate(research_stage = recode(research_stage,	
+                                 "Post-project stage (the project has received a decision (accepted or rejected). At this point, it is either concluded or being revised and prepared for submission to another venue)"
+                                 = "Post-project stage", 
+                                 "Preparations (IRB permit, preregistration, experiment preparations)" = 
+                                   "Preparations",
+                                 "Reality check (e.g., literature search, consultation with colleagues)" =
+                                   "Reality check",
+                                 "Waiting for journal's response and revisions" = "Waiting")) %>% 
+  mutate(across(all_of(feeling_cols),
+                ~ as.numeric(as.character(.x)))) %>% 
+  mutate(feeling_general_1 = as.numeric(as.character(feeling_general_1))) %>% 
+  filter(!(dismiss_1 == "No")) %>% 
+  rename(Duration = `Duration..in.seconds.`)
+  
+```
+
+```{r}
+feeling_cols = c("interest","amusement","pride","joy","pleasure",
+  "contentment","love","admiration","relief","compassion", "sadness", "guilt", "regret" ,"shame", 
+                       "disappointment" , "fear", "disgust", "contempt" , "hate","anger")
+
+positive_feelings <- c(
+  "interest","amusement","pride","joy","pleasure",
+  "contentment","love","admiration","relief","compassion"
+)
+negative_feelings <- c("sadness", "guilt", "regret" ,"shame", 
+                       "disappointment" , "fear", "disgust", "contempt" , "hate","anger")
+```
+
+```{r}
+data_recoded_clean = data_recoded %>% 
+  select(ResponseId,gender, position, research_stage, category_of_work,
+         country, country_other, area, all_of(feeling_cols), feeling_general_1) %>% 
+  mutate(across(interest:feeling_general_1, ~ na_if(.x, 0))) %>% 
+  mutate(NAcount = rowSums(is.na(across(interest:anger)))) %>%
+  mutate(NAcountpos = rowSums(is.na(across(interest:compassion)))) %>% 
+  mutate(NAcountneg = rowSums(is.na(across(sadness:anger)))) %>% 
+  mutate(across(sadness:anger, ~ 8 - .x)) %>% 
+  filter(!if_all(all_of(feeling_cols), is.na)) %>% 
+  select(-feeling_general_1) 
+
 ```
 
 
@@ -34,12 +106,8 @@ source("D:/Emotional landscape/functionscombined.R")
 
 
 ```{r}
-raw_data <- read.csv("D:/Emotional landscape/raw_data.csv") 
-
 #completion distribution
-my_data_clean <- raw_data[-c(1, 2), ]
-
-my_data_clean %>%
+data_recoded %>%
   mutate(Status = ifelse(Finished,
                          "Completed",
                          "Not Completed")) %>%
@@ -60,7 +128,7 @@ my_data_clean %>%
 
 ```{r}
 #gender distribution
-df_Gender <- my_data_clean %>%
+df_Gender <- data_recoded %>%
   mutate(
     gender = str_trim(gender),
     gender = ifelse(gender == "" | is.na(gender),
@@ -97,7 +165,7 @@ ggplot(df_Gender, aes(x = gender, y = n)) +
 
 ```{r}
 #research area distribution
-unique(my_data_clean$area)
+unique(data_recoded$area)
 
 df_area <- my_data_clean %>%
   mutate(
@@ -139,7 +207,7 @@ ggplot(df_area, aes(x = area, y = n)) +
 
 ```{r}
 #questionnaire dropout spikes
-df_dropout_exact <- my_data_clean %>%
+df_dropout_exact <- data_recoded %>%
   mutate(Progress = as.numeric(Progress)) %>%
   filter(!is.na(Progress), Progress < 100) %>%
   count(Progress) %>%
@@ -186,7 +254,7 @@ sd_progress
 
 ```{r}
 #research stage distribution
-df_stage <- my_data_clean %>%
+df_stage <- data_recoded %>%
   mutate(
     research_stage = str_trim(research_stage),
     research_stage = ifelse(is.na(research_stage) | research_stage == "",
@@ -235,9 +303,9 @@ ggplot(df_stage_final, aes(x = stage_code, y = n)) +
 
 ```{r}
 #position distribution
-unique(my_data_clean$postion)
+unique(data_recoded$postion)
 
-df_position <- my_data_clean %>%
+df_position <- data_recoded %>%
   mutate(
     position = str_trim(position),
     position = ifelse(position == "" | is.na(position),
@@ -276,7 +344,7 @@ ggplot(df_position, aes(x = position, y = n)) +
 
 ```{r}
 #work distribution
-unique(my_data_clean$category_of_work)
+unique(data_recoded$category_of_work)
 
 df_category_of_work <- my_data_clean %>%
   mutate(
@@ -319,7 +387,7 @@ ggplot(df_category_of_work, aes(x = category_of_work, y = n)) +
 
 ```{r}
 #age distribution
-df_age <- my_data_clean %>%
+df_age <- data_recoded %>%
   mutate(
     age = as.numeric(age)
   ) %>%
@@ -360,63 +428,12 @@ max_age)
 
 
 
-
-## pre-formatting raw data 
-```{r}
-raw_renamed <- raw_data %>% 
- rename(
-    interest = feeling_stage_1,
-    amusement = feeling_stage_2, 
-    pride = feeling_stage_3, 
-    joy = feeling_stage_4, 
-    pleasure = feeling_stage_5, 
-    contentment = feeling_stage_6, 
-    love = feeling_stage_7, 
-    admiration = feeling_stage_8, 
-    relief = feeling_stage_9, 
-    compassion = feeling_stage_10, 
-    sadness = feeling_stage_11, 
-    guilt = feeling_stage_12, 
-    regret = feeling_stage_13, 
-    shame = feeling_stage_14, 
-    disappointment = feeling_stage_15, 
-    fear = feeling_stage_16, 
-    disgust = feeling_stage_17, 
-    contempt = feeling_stage_18, 
-    hate = feeling_stage_19, 
-    anger = feeling_stage_20
-  ) %>% 
-  select(
-    -Status, 
-    -StartDate, 
-    -EndDate, 
-    -RecordedDate, 
-    -DistributionChannel,
-    -UserLanguage
-  ) %>% 
-  relocate(ResponseId, .before = Progress) %>% 
-  mutate(
-    across(interest:anger, as.numeric), 
-    across(interest:anger, ~ na_if(., 0))) %>% ## this replaces 0 values with NA
-  mutate(
-    research_stage = recode(
-      research_stage,
-      "Project genesis/ first thoughts/ idea creation" =  "Project genesis", 
-       "Preparations (IRB permit, preregistration, experiment preparations)" = "Preparations", 
-       "Reality check (e.g., literature search, consultation with colleagues)" = "Reality check", 
-       "Waiting for journal's response and revisions" = "Waiting",
-       "Post-project stage (the project has received a decision (accepted or rejected). At this point, it is either concluded or being revised and prepared for submission to another venue)" = "Post-project stage"
-  )) %>% 
-  slice(-1:-3) %>% 
-  filter(dismiss_1 != "No")
-```
-
 # =================================================================================
 # Emotions By Research Stage
 ## 1. Emotions during the Data Analysis stage
 ## 1.1 Emotions on the participant-level
 ```{r}
-analysis_data <- raw_renamed %>% 
+analysis_data <- data_recoded %>% 
   filter(
     research_stage == "Data analysis"
   ) %>%
@@ -469,7 +486,7 @@ ggsave(filename = "overall_data_analysis.png",
 ## 2. Emotions during the Preparations stage
 ## 2.1. Intensity of emotions on the participant-level
 ```{r}
-preparations_data <- raw_renamed %>% 
+preparations_data <- data_recoded %>% 
   filter(
     research_stage == "Preparations"
   ) %>% 
@@ -514,7 +531,7 @@ ggsave(filename = "overall_preparations.png",
 ## 3. Emotions while Waiting for journal's response and revisions
 ## 3.1. Participant-level intensity of emotions
 ```{r}
-waiting_data <- raw_renamed %>% 
+waiting_data <- data_recoded %>% 
   filter(
     research_stage == "Waiting"
   ) %>% 
@@ -557,7 +574,7 @@ ggsave(filename = "overall_preparations.png",
 ```
 ## 4. Post-project stage 
 ```{r}
-post_project <- raw_renamed %>% 
+post_project <- data_recoded %>% 
   filter(
     research_stage == "Post-project stage"
   ) %>% 
@@ -632,7 +649,7 @@ ggsave(filename = "overall_rejected.png",
 
 ## 5. Report writing stage - heatmap and overall intensity of emotions
 ```{r}
-report_writing <- raw_renamed %>% 
+report_writing <- data_recoded %>% 
   filter(
     research_stage == "Report writing"
   ) %>% 
@@ -676,11 +693,10 @@ ggsave(filename = "overall_report_writing.png",
 
 ## 6. facet_wrap plot for emotional intensity in all research stages
 ```{r}
-head(raw_renamed)
-overall_intensity <- raw_renamed %>% 
-  rename(duration = "Duration..in.seconds.") %>% 
+head(data_recoded)
+overall_intensity <- data_recoded %>% 
   select(
-    -Q22, -Q22_6_TEXT, -cause_stage, -dismiss_1, -Finished, -Progress, -duration, -cause_general
+    -Q22, -Q22_6_TEXT, -cause_stage, -dismiss_1, -Finished, -Progress, -Duration, -cause_general
   ) %>% 
   arrange(research_stage)
 
@@ -721,12 +737,12 @@ ggsave(filename = "facet_wrap_heatmap.png",
 ## 1. check difference between genders - make plot (men, women, non-binary and prefer not to say)
 ## 2. t-test to test statistical significance 
 ## 1.1. women
-genders_emotions <- raw_renamed %>%
+genders_emotions = data_recoded %>%
   filter(
     gender %in% c("Woman", "Man")
   ) %>% 
   select(
-    -Finished, -`Duration (in seconds)`, -Progress, -dismiss_1, -cause_stage, -cause_general, -Q22, -Q22_6_TEXT
+    -Finished, -Duration, -Progress, -dismiss_1, -cause_stage, -cause_general, -Q22, -Q22_6_TEXT
   ) %>% 
   select(
     -category_of_work, -research_stage, -feeling_general_1, -position, -area, -age, -country, -country_other) %>% 
@@ -750,8 +766,8 @@ genders_wide <- genders_long %>%
     values_from = "intensity"
   ) %>% 
   mutate(
-    positive_mean = rowMeans(select(., 3:12), na.rm = T), 
-    negative_mean = rowMeans(select(., 13:22), na.rm = T)
+    positive_mean = rowMeans(select(., positive1:positive10), na.rm = T), 
+    negative_mean = rowMeans(select(., negative1:negative10), na.rm = T)
   ) %>% 
   filter(
     !(is.na(negative_mean)), 
@@ -792,9 +808,9 @@ ggsave(filename = "emotions_men_women.png",
 # Analysis of standard deviations within the emotions 
 ```{r}
 ## flag where SD of emotions are > 1 
-sd_flag <- raw_renamed %>% 
+sd_flag <- data_recoded%>% 
   select(
-    -Progress, -`Duration (in seconds)`, -Finished, -dismiss_1, -Q22, -Q22_6_TEXT 
+    -Progress, -Duration, -Finished, -dismiss_1, -Q22, -Q22_6_TEXT 
   ) %>% 
   mutate(across(2:21, as.numeric),
          mean_landscape = rowMeans(across(2:21), na.rm = T),
@@ -821,15 +837,15 @@ great_sd <- sd_flag %>%
 ## ====================================================================
 # Participants with negative_mean > positive_mean -> age distributions
 ```{r}
-averages_data <- raw_renamed %>% 
+averages_data <- data_recoded %>% 
   select(
-    -Progress, -`Duration (in seconds)`, -Finished, -dismiss_1,
+    -Progress, -Duration, -Finished, -dismiss_1,
   ) %>% 
   mutate(
-    across(5:24, as.numeric), 
-    pos_mean = rowMeans(across(5:14), na.rm = T), 
-    neg_mean = rowMeans(across(15:24), na.rm = T), 
-    across(35:36, ~ na_if(., NaN))
+    across(interest:anger, as.numeric), 
+    pos_mean = rowMeans(across(interest:compassion), na.rm = T), 
+    neg_mean = rowMeans(across(sadness:anger), na.rm = T), 
+    across(pos_mean:neg_mean, ~ na_if(., NaN))
   )
 
 ## filter: average intensity of emotions is higher regarding the negative emotions
@@ -1008,7 +1024,7 @@ ggsave(filename = "pos_research_stage_piechart.png",
 ## 1. Interest:
 ```{r}
 # 1.1. Interest (first try)
-interest_distribution <- raw_renamed %>% 
+interest_distribution <- data_recoded%>% 
   select(
     interest, research_stage
   ) %>% 
@@ -1030,7 +1046,7 @@ interest_distribution %>%
 ```{r}
 emotion_vars <-  c("interest", "amusement", "pride", "joy", "pleasure", "contentment", "love", "admiration", "relief", "compassion", "sadness", "guilt", "regret", "shame", "disappointment", "fear", "disgust", "contempt", "hate", "anger")                 
 
-all_distribution <- raw_renamed %>% 
+all_distribution <- data_recoded %>% 
   select(
     research_stage, interest:anger
   ) %>% 
@@ -1040,12 +1056,12 @@ all_distribution <- raw_renamed %>%
   group_by(research_stage) %>% 
   summarise(
     across(
-      all_of(emotion_vars), 
+      all_of(feeling_cols), 
       ~ round(mean(.x[.x != 0], na.rm = T), 3)
     )
   ) %>% 
   pivot_longer(
-    cols = all_of(emotion_vars),
+    cols = all_of(feeling_cols),
     names_to = "emotion", 
     values_to = "intensity"
   ) %>% 
@@ -1073,7 +1089,7 @@ ggsave(filename = "all_distribution_facet.png",
 # Analyses to NA data regarding the emotions (emotions that were 'not felt')
 ```{r}
 ## df for counting NA values by research stage
-na_counter <- raw_renamed %>% 
+na_counter <- data_recoded %>% 
   select(
     ResponseId, interest:anger, research_stage
   ) %>% 
@@ -1128,72 +1144,10 @@ ggsave(filename = "na_facet_wrap.png",
 
 #Sanyi
 ```{r}
-data_recoded = raw_data[-1:-2, ]
 
-data_recoded = data_recoded %>% 
-  rename(feeling_interest = feeling_stage_1,
-         feeling_amusement = feeling_stage_2,
-         feeling_pride = feeling_stage_3,
-         feeling_joy = feeling_stage_4,
-         feeling_pleasure = feeling_stage_5,
-         feeling_contentment = feeling_stage_6,
-         feeling_love = feeling_stage_7, 
-         feeling_admiration = feeling_stage_8, 
-         feeling_relief = feeling_stage_9, 
-         feeling_compassion = feeling_stage_10,
-         feeling_sadness = feeling_stage_11, 
-         feeling_guilt = feeling_stage_12,
-         feeling_regret = feeling_stage_13, 
-         feeling_shame = feeling_stage_14, 
-         feeling_disappointment = feeling_stage_15, 
-         feeling_fear = feeling_stage_16, 
-         feeling_disgust = feeling_stage_17, 
-         feeling_contempt = feeling_stage_18,
-         feeling_hate = feeling_stage_19, 
-         feeling_anger = feeling_stage_20)%>% 
-  mutate(research_stage = factor(research_stage)) %>% 
-  mutate(area = factor(area)) %>% 
-  mutate(gender = factor(gender)) %>% 
-  mutate(position = factor(position)) %>% 
-  mutate(category_of_work = factor(category_of_work)) %>% 
-  mutate(research_stage = recode(research_stage,	
-                                 "Post-project stage (the project has received a decision (accepted or rejected). At this point, it is either concluded or being revised and prepared for submission to another venue)"
-                                 = "Post-project stage", 
-                                 "Preparations (IRB permit, preregistration, experiment preparations)" = 
-                                   "Preparations",
-                                 "Reality check (e.g., literature search, consultation with colleagues)" =
-                                   "Reality check")) %>% 
-  mutate(across(starts_with("feeling_"),
-                ~ as.numeric(as.character(.x)))) %>% 
-  filter(!(dismiss_1 == "No"))
-```
-
-```{r}
-data_recoded_clean = data_recoded %>% 
-  select(ResponseId,gender, position, research_stage, category_of_work,
-         country, country_other, area, starts_with("feeling_")) %>% 
-  mutate(across(feeling_interest:feeling_general_1, ~ na_if(.x, 0))) %>% 
-  mutate(NAcount = rowSums(is.na(across(feeling_interest:feeling_anger)))) %>%
-  mutate(NAcountpos = rowSums(is.na(across(feeling_interest:feeling_compassion)))) %>% 
-  mutate(NAcountneg = rowSums(is.na(across(feeling_sadness:feeling_anger)))) %>% 
-  mutate(across(feeling_sadness:feeling_anger, ~ 8 - .x)) %>% 
-  filter(!if_all(starts_with("feeling_"), is.na)) %>% 
-  select(-feeling_general_1) 
-
-
-positive_feelings <- c(
-  "feeling_interest","feeling_amusement","feeling_pride","feeling_joy","feeling_pleasure",
-  "feeling_contentment","feeling_love","feeling_admiration","feeling_relief","feeling_compassion"
-)
-negative_feelings <- c("feeling_sadness", "feeling_guilt", "feeling_regret" ,"feeling_shame", 
-                       "feeling_disappointment" , "feeling_fear", "feeling_disgust", "feeling_contempt" , "feeling_hate","feeling_anger")
-```
-
-
-overall emotions visualization by gender
-```{r}
+#overall emotions visualization by gender
 gender_emotions = data_recoded_clean %>% 
-  select(gender, starts_with("feeling_")) %>% 
+  select(gender, all_of(feeling_cols)) %>% 
   filter(!(gender == ""))
 gender_emotions = gender_emotions %>%  
   mutate(gender = if_else(gender == "Non-binary / third gender / gender non-conforming", "non-binary", gender)) %>% 
@@ -1202,7 +1156,7 @@ gender_emotions_positive = gender_emotions %>%
   select(gender, all_of(positive_feelings))
 gender_emotions_negative = gender_emotions %>% 
   select(gender, all_of(negative_feelings)) %>% 
-  mutate(across(feeling_sadness:feeling_anger, ~ 8 - .x))
+  mutate(across(sadness:anger, ~ 8 - .x))
 
 gender_na = Nacount(data_recoded_clean, gender) %>% 
   filter(!(gender == ""))
@@ -1240,13 +1194,13 @@ combined_gender
 ```{r}
 
 research_stage_emotions = data_recoded_clean %>% 
-  select(research_stage, starts_with("feeling_")) %>% 
+  select(research_stage, all_of(feeling_cols)) %>% 
   filter(!(research_stage == ""))
 research_stage_emotions_positive = research_stage_emotions %>% 
   select(research_stage, all_of(positive_feelings))
 research_stage_emotions_negative = research_stage_emotions %>% 
   select(research_stage, all_of(negative_feelings)) %>% 
-  mutate(across(feeling_sadness:feeling_anger, ~ 8 - .x))
+  mutate(across(sadness:anger, ~ 8 - .x))
 
 research_stage_na = Nacount(data_recoded_clean, research_stage) %>% 
   filter(!(research_stage == ""))
@@ -1298,12 +1252,13 @@ combined_research_stage
 overall emotion visualization area
 ```{r}
 area_emotions = data_recoded_clean %>% 
-  select(area, starts_with("feeling_")) %>% 
+  select(area, all_of(feeling_cols)) %>% 
   filter(!(area == ""))
 area_emotions_positive = area_emotions %>%
 select(area, all_of(positive_feelings))
 area_emotions_negative = area_emotions %>% 
-  select(area, all_of(negative_feelings))
+  select(area, all_of(negative_feelings)) %>% 
+  mutate(across(sadness:anger, ~ 8 - .x))
 
 area_na = Nacount(data_recoded_clean, area) %>% 
   filter(!(area == ""))
@@ -1323,49 +1278,19 @@ area_emotions_mean_positive = mean_function(area_emotions_positive, area)
 area_emotions_negative = emotion_function(area_emotions_negative, area)
 
 area_emotions_mean_negative = mean_function(area_emotions_negative, area)
-
-
-area_pos = overall_emotion_plot_valence(
-  area_emotions_mean_positive,
-  area,
-  mean_emotion,
-  color_low = "orange",
-  color_high = "red",
-  "Positive Emotions"
-)
-
-area_neg = overall_emotion_plot_valence(
-  area_emotions_mean_negative,
-  area,
-  mean_emotion,
-  color_low = "lightblue",
-  color_high = "blue",
-  "Negative Emotions"
-)
-
-
-overall_emotion_plot(
-  area_emotions_mean,
-  area,
-  mean_emotion,
-  "Overall Emotional Landscape by Area"
-)
-
-combined_area = area_pos + area_neg
-
-combined_area
 ```
+
 
 Overall emotion visualization by position 
 ```{r}
 position_emotions = data_recoded_clean %>% 
   filter(!(position == "")) %>% 
-  select(position, starts_with("feeling_"))
+  select(position, all_of(feeling_cols))
 position_emotions_positive = position_emotions %>%
   select(position, all_of(positive_feelings))
 position_emotions_negative = position_emotions %>% 
   select(position, all_of(negative_feelings)) %>% 
-  mutate(across(feeling_sadness:feeling_anger, ~ 8 - .x))
+  mutate(across(sadness:anger, ~ 8 - .x))
 
 position_na = Nacount(data_recoded_clean, position) %>% 
   filter(!(position == ""))
@@ -1447,17 +1372,16 @@ Overall emotion visualization by country
 #Data cleaning
 ```{r}
 country_emotions = data_recoded %>%  
-  select(ResponseId, country, country_other, starts_with("feeling_")) %>% 
-  mutate(across(feeling_interest:feeling_anger, ~ na_if(.x, 0))) %>% 
+  select(ResponseId, country, country_other, all_of(feeling_cols)) %>% 
+  mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
 mutate(
-  mutate(across(starts_with("feeling_"),
+  mutate(across(all_of(feeling_cols),
                 ~ as.numeric(as.character(.x))))) %>% 
-    mutate(across(feeling_sadness:feeling_anger,~ 8 - .x)) %>% 
-  mutate(mean_feeling = rowMeans(across(feeling_interest:feeling_anger), na.rm = TRUE))
+    mutate(across(sadness:anger,~ 8 - .x)) %>% 
+  mutate(mean_feeling = rowMeans(across(interest:anger), na.rm = TRUE))
 
 
 country_emotions = country_emotions %>% 
-  select(-feeling_general_1) %>% 
   pivot_longer(cols = c(country, country_other), 
                names_to = "group", 
                values_to = "country")
@@ -1547,14 +1471,14 @@ country_emotions_clean = country_emotions_clean %>%
   mutate(country = factor(country))
 country_emotions_clean_pos = country_emotions_clean %>% 
   select(ResponseId, country, continent, all_of(positive_feelings)) %>% 
-  mutate(mean_feeling = rowMeans(across(feeling_interest:feeling_compassion), na.rm = TRUE))
+  mutate(mean_feeling = rowMeans(across(interest:compassion), na.rm = TRUE))
 country_emotions_clean_neg = country_emotions_clean %>% 
   select(ResponseId, country, continent, all_of(negative_feelings)) %>% 
-  mutate(mean_feeling = rowMeans(across(feeling_sadness:feeling_anger), na.rm = TRUE)) %>% 
-  mutate(across(feeling_sadness:feeling_anger, ~ 8 - .x)) %>% 
-  mutate(NAcount = rowSums(is.na(across(feeling_sadness:feeling_anger)))) %>% 
+  mutate(mean_feeling = rowMeans(across(sadness:anger), na.rm = TRUE)) %>% 
+  mutate(across(sadness:anger, ~ 8 - .x)) %>% 
+  mutate(NAcount = rowSums(is.na(across(sadness:anger)))) %>% 
   filter(!(NAcount > 5)) %>% 
-  mutate(mean_feeling = rowMeans(across(feeling_sadness:feeling_anger), na.rm = TRUE))
+  mutate(mean_feeling = rowMeans(across(sadness:anger), na.rm = TRUE))
 ```
 
 ```{r}

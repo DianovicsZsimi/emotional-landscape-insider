@@ -170,7 +170,7 @@ overall_emotion_plot_valence <- function(data, group_var, mean_var, color_low = 
 emotion_function = function(data, catvar) {
   data %>%   
     group_by({{catvar}}) %>%
-    summarise(across(starts_with("feeling_"),
+    summarise(across(any_of (feeling_cols),
                      ~ mean(.x, na.rm = TRUE),
                      .names = "mean_{.col}"))
 }
@@ -296,7 +296,7 @@ continent_plot_function_valence = function(data, color_low = "orange",
 continent_emotions_mean_function <- function(data, continent_name) {
   data %>%
     filter(continent == continent_name) %>%
-    mutate(across(feeling_interest:feeling_anger, ~ na_if(.x, 0))) %>% 
+    mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
     group_by(country) %>%
     summarise(
       mean_emotion = mean(mean_feeling, na.rm = TRUE),
@@ -306,7 +306,7 @@ continent_emotions_mean_function <- function(data, continent_name) {
 continent_emotions_mean_function_pos <- function(data, continent_name) {
   data %>%
     filter(continent == continent_name) %>%
-    mutate(across(feeling_interest:feeling_compassion, ~ na_if(.x, 0))) %>% 
+    mutate(across(interest:compassion, ~ na_if(.x, 0))) %>% 
     group_by(country) %>%
     summarise(
       mean_emotion = mean(mean_feeling, na.rm = TRUE),
@@ -316,7 +316,7 @@ continent_emotions_mean_function_pos <- function(data, continent_name) {
 continent_emotions_mean_function_neg <- function(data, continent_name) {
   data %>%
     filter(continent == continent_name) %>%
-    mutate(across(feeling_sadness:feeling_anger, ~ na_if(.x, 0))) %>% 
+    mutate(across(sadness:anger, ~ na_if(.x, 0))) %>% 
     group_by(country) %>%
     summarise(
       mean_emotion = mean(mean_feeling, na.rm = TRUE),
