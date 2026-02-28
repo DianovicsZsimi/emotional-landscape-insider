@@ -55,6 +55,15 @@ raw_renamed <- raw_data %>%
   mutate(
     across(9:28, as.numeric), 
     across(9:28, ~ na_if(., 0))) %>% ## this replaces 0 values with NA
+  mutate(
+    research_stage = recode(
+      research_stage,
+      "Project genesis/ first thoughts/ idea creation" =  "Project genesis", 
+       "Preparations (IRB permit, preregistration, experiment preparations)" = "Preparations", 
+       "Reality check (e.g., literature search, consultation with colleagues)" = "Reality check", 
+       "Waiting for journal's response and revisions" = "Waiting",
+       "Post-project stage (the project has received a decision (accepted or rejected). At this point, it is either concluded or being revised and prepared for submission to another venue)" = "Post-project stage"
+  )) %>% 
   slice(-1:-3) %>% 
   filter(dismiss_1 != "No")
 ```
@@ -63,6 +72,7 @@ raw_renamed <- raw_data %>%
 source("functions_bogi.R")
 ```
 
+# =================================================================================
 # Emotions By Research Stage
 ## 1. Emotions during the Data Analysis stage
 ## 1.1 Emotions on the participant-level
@@ -79,7 +89,26 @@ analysis_heatmap <- analysis_data %>%
 
 # heatmap by participant - Data Analysis stage
 analysis_heatmap %>% 
-  heatmap_plot()
+  ggplot(aes(x = emotion, y = ResponseId, fill = intensity)) +
+  geom_tile(
+    inherit.aes = T,
+    position = position_identity(), na.rm = T) +
+  scale_fill_gradient(
+      low = "white", 
+      high = "#02452B", 
+      limits = c(0, 7)) +
+  labs(
+      title = "Intensity of emotions on the level of participants in the Data Analysis stage", 
+      tag = "1.1.") +
+    theme(
+      axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
+      axis.text.y = element_blank())
+
+ggsave(filename = "heatmap_data_analysis.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
+
+  ## heatmap_plot(analysis_heatmap)
 ```
 
 ## 1.2. Overall intensity of emotions
@@ -88,7 +117,14 @@ analysis_overall <- analysis_heatmap %>%
   sum_analysis() ## summarising emotional intensity on every emotion
 
 analysis_overall %>% 
-  plot_overall()
+  plot_overall() +
+    labs(
+      title = "Overall intensity of emotions in the Data Analysis stage", 
+      tag = "1.2.")
+
+ggsave(filename = "overall_data_analysis.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 
 ## 2. Emotions during the Preparations stage
@@ -96,7 +132,7 @@ analysis_overall %>%
 ```{r}
 preparations_data <- raw_renamed %>% 
   filter(
-    research_stage == "Preparations (IRB permit, preregistration, experiment preparations)"
+    research_stage == "Preparations"
   ) %>% 
   analysis_select() ## selecting relevant columns
 
@@ -105,8 +141,19 @@ preparations_heatmap <- preparations_data %>%
   longer_heatmap()
 
 # heatmap by participant
-preparations_heatmap %>% 
-  heatmap_plot()
+preparations_heatmap %>%
+  heatmap_plot() + 
+   scale_fill_gradient(
+      low = "white", 
+      high = "#2b4a78", 
+      limits = c(0, 7)) + 
+  labs(
+      title = "Intensity of emotions on the level of participants in the Preparations stage", 
+      tag = "2.1.")
+
+ggsave(filename = "heatmap_preparations.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 
 ## 2.2. Overall intensity of emotions in the preparations stage
@@ -115,7 +162,14 @@ preparations_overall <- preparations_heatmap %>%
   sum_analysis() ## summarising emotional intensity on every emotion
 
 preparations_overall %>% 
-  plot_overall()
+  plot_overall() + 
+  labs(
+      title = "Overall intensity of emotions in the Preparations stage", 
+      tag = "2.2.")
+
+ggsave(filename = "overall_preparations.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 
 ## 3. Emotions while Waiting for journal's response and revisions
@@ -123,7 +177,7 @@ preparations_overall %>%
 ```{r}
 waiting_data <- raw_renamed %>% 
   filter(
-    research_stage == "Waiting for journal's response and revisions"
+    research_stage == "Waiting"
   ) %>% 
   analysis_select()
 
@@ -133,22 +187,40 @@ waiting_heatmap <- waiting_data %>%
 
 # heatmap by participant
 waiting_heatmap %>% 
-  heatmap_plot()
+  heatmap_plot() + 
+   scale_fill_gradient(
+      low = "white", 
+      high = "#9D3B06", 
+      limits = c(0, 7)) + 
+  labs(
+      title = "Intensity of emotions on the level of participants in the Waiting stage", 
+      tag = "3.1.")
+
+ggsave(filename = "heatmap_waiting.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 
-## 2.2. Overall intensity of emotions in the preparations stage
+## 3.2. Overall intensity of emotions in the preparations stage
 ```{r}
 waiting_overall <- waiting_heatmap %>% 
   sum_analysis() ## summarising intensity on every emotion
 
 waiting_overall %>% 
-  plot_overall()
+  plot_overall() + 
+  labs(
+      title = "Overall intensity of emotions in the Waiting stage", 
+      tag = "3.2.")
+
+ggsave(filename = "overall_preparations.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 ## 4. Post-project stage 
 ```{r}
 post_project <- raw_renamed %>% 
   filter(
-    research_stage == "Post-project stage (the project has received a decision (accepted or rejected). At this point, it is either concluded or being revised and prepared for submission to another venue)"
+    research_stage == "Post-project stage"
   ) %>% 
   select(-dismiss_1) 
 
@@ -165,8 +237,15 @@ post_project1_long <- post_project1 %>%
 
 # geom_col for mean intensity
 post_project1_long %>% 
-  plot_overall()
+  plot_overall() + 
+  labs(
+      title = "Post-project stage: Accepted and published", 
+      tag = "4.1.")
 # most intense emotions if the article was accepted and published: interest, joy, pride, pleasure, relief, contentment (+ admiration, amusement)
+
+ggsave(filename = "overall_accepted_published.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 
 # 4.2. Accepted but not yet published
 post_project2 <- post_project %>% 
@@ -181,7 +260,14 @@ post_project2_long <- post_project2 %>%
 
 # geom_col for mean intensity
 post_project2_long %>% 
-  plot_overall()
+  plot_overall() + 
+  labs(
+      title = "Post-project stage: Accepted but not yet published", 
+      tag = "4.2.")
+
+ggsave(filename = "overall_accepted_not_yet_published.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 
 ## 4.3. Rejected (rejected and abandoned, rejected and being revised, rejected and postponed)
 post_project3 <- post_project %>% 
@@ -195,11 +281,17 @@ post_project3_long <- post_project3 %>%
   sum_analysis()
 
 post_project3_long %>% 
-  plot_overall()
+  plot_overall() + 
+  labs(
+      title = "Post-project stage: Rejected", 
+      tag = "4.3.")
 
+ggsave(filename = "overall_rejected.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 
-## 5. Report writing stage - mean intensity of emotions
+## 5. Report writing stage - heatmap and overall intensity of emotions
 ```{r}
 report_writing <- raw_renamed %>% 
   filter(
@@ -212,9 +304,34 @@ report_writing_long <- report_writing %>%
   longer_heatmap() %>% 
   sum_analysis()
 
+# heatmap 
+writing_heatmap <- report_writing %>% 
+  longer_heatmap() 
+
+writing_heatmap %>% 
+  heatmap_plot() +
+   scale_fill_gradient(
+      low = "white", 
+      high = "#75069D", 
+      limits = c(0, 7)) + 
+  labs(
+      title = "Intensity of emotions on the level of participants in the Waiting stage", 
+      tag = "3.1.")
+
+ggsave(filename = "heatmap_report_writing.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
+
 # geom_col for mean intensity
 report_writing_long %>% 
-  plot_overall()
+  plot_overall() + 
+  labs(
+      title = "Report writing", 
+      tag = "5.")
+
+ggsave(filename = "overall_report_writing.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 
 
@@ -238,16 +355,7 @@ overall_long <- overall_intensity %>%
          emotion = factor(emotion, levels = unique(emotion))) %>% 
   group_by(research_stage, emotion) %>% 
   summarise(mean_intensity = mean(intensity, na.rm = T), .groups = "drop") %>% 
-  filter(!(is.na(research_stage))) %>% 
-  mutate(
-    research_stage = 
-      recode(research_stage,
-             "Reality check (e.g., literature search, consultation with colleagues)" = "Reality check", 
-             "Waiting for journal's response and revisions" = "Waiting", 
-             "Project genesis/ first thoughts/ idea creation" = "Project genesis", 
-             "Post-project stage (the project has received a decision (accepted or rejected). At this point, it is either concluded or being revised and prepared for submission to another venue)" = "Post-project stage", 
-             "Preparations (IRB permit, preregistration, experiment preparations)" = "Preparationss"
-    ))
+  filter(!(is.na(research_stage)))
 
 # create plot 
 ggplot(overall_long, aes(x = emotion, y = mean_intensity, fill = intensity)) +
@@ -261,8 +369,13 @@ ggplot(overall_long, aes(x = emotion, y = mean_intensity, fill = intensity)) +
     axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
     legend.position = "none") 
 
+ggsave(filename = "facet_wrap_heatmap.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
+
 ```
 
+# ====================================================================================================
 # Gender, age, country, area of research, seniority level, category of work -> connections to emotions
 ```{r}
 ## 1. check difference between genders - make plot (men, women, non-binary and prefer not to say)
@@ -329,8 +442,13 @@ ggplot(summary_genders,
     title = "Emotional intensity between men and women" 
   ) +
   theme_minimal()
+
+ggsave(filename = "emotions_men_women.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 
+# ====================================================================================================
 # Analysis of standard deviations within the emotions 
 ```{r}
 ## flag where SD of emotions are > 1 
@@ -392,6 +510,10 @@ age_negative_counts <- age_negative %>%
 ## pyramid to explore the age distribution, split by gender 
 age_negative_counts %>% 
   pyramid_plot()
+
+ggsave(filename = "age_pyramid.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 ## participants with negative_mean > positive_mean -> position
 ```{r}
@@ -402,6 +524,10 @@ position_negative <- negative_means %>%
 ## pie chart for the distribution of positions
 position_negative %>% 
   piechart_plot()
+
+ggsave(filename = "neg_position_piechart.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 
 ## participants with negative_mean > positive_mean -> category_of_work
@@ -414,6 +540,9 @@ work_negative <- negative_means %>%
 work_negative %>% 
   piechart_plot()
 
+ggsave(filename = "neg_work_piechart.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 ## participants with negative_mean > positive_mean -> research area 
 ```{r}
@@ -423,6 +552,10 @@ area_negative <- negative_means %>%
 
 area_negative %>% 
   piechart_plot()
+
+ggsave(filename = "neg_researcharea_piechart.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 ## participants with negative_mean > positive_mean -> research stage
 ```{r}
@@ -435,6 +568,10 @@ stage_negative <- negative_means %>%
 ## piechart plot
 stage_negative %>% 
   piechart_plot()
+
+ggsave(filename = "neg_research_stage_piechart.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 
 ## ====================================================================
@@ -458,6 +595,10 @@ age_positive_counts <- age_negative %>%
 age_positive_counts %>% 
   pyramid_plot()
 
+ggsave(filename = "pos_age_pyramid.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
+
 ```
 
 ## participants with negative_mean > positive_mean -> position
@@ -469,9 +610,13 @@ position_positive <- positive_means %>%
 ## pie chart for the distribution of positions
 position_positive %>% 
   piechart_plot()
+
+ggsave(filename = "pos_positive_piechart.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 
-## participants with negative_mean > positive_mean -> category_of_work
+## participants with negative_mean < positive_mean -> category_of_work
 ```{r}
 work_positive <- positive_means %>% 
   rename(category = category_of_work) %>% ## rename column for the functions
@@ -481,8 +626,12 @@ work_positive <- positive_means %>%
 work_positive %>% 
   piechart_plot()
 
+ggsave(filename = "pos_work_piechart.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
+
 ```
-## participants with negative_mean > positive_mean -> research area 
+## participants with negative_mean < positive_mean -> research area 
 ```{r}
 area_positive <- positive_means %>% 
   rename(category = area) %>% ## rename column for the functions
@@ -490,8 +639,13 @@ area_positive <- positive_means %>%
 
 area_positive %>% 
   piechart_plot()
+
+ggsave(filename = "pos_research_area_piechart.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
-## participants with negative_mean > positive_mean -> research stage
+
+## participants with negative_mean < positive_mean -> research stage
 ```{r}
 stage_positive <- positive_means %>% 
   rename(category = research_stage) %>% ## rename column for functions 
@@ -502,6 +656,10 @@ stage_positive <- positive_means %>%
 ## piechart plot
 stage_positive %>% 
   piechart_plot()
+
+ggsave(filename = "pos_research_stage_piechart.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 
 
@@ -530,6 +688,8 @@ interest_distribution %>%
 ```
 ## 2. Facet_wrap plot for all emotions in the research stages
 ```{r}
+emotion_vars <-  c("interest", "amusement", "pride", "joy", "pleasure", "contentment", "love", "admiration", "relief", "compassion", "sadness", "guilt", "regret", "shame", "disappointment", "fear", "disgust", "contempt", "hate", "anger")                 
+
 all_distribution <- raw_renamed %>% 
   select(
     research_stage, interest:anger
@@ -537,23 +697,36 @@ all_distribution <- raw_renamed %>%
   filter(!(is.na(research_stage))) %>% 
   mutate(
     research_stage = stringr::str_trunc(research_stage, 20)) %>% 
-  pivot_longer(
-    cols = -research_stage, 
-    names_to = "emotion", 
-    values_to = "intensity", 
-    values_drop_na = T
+  group_by(research_stage) %>% 
+  summarise(
+    across(
+      all_of(emotion_vars), 
+      ~ round(mean(.x[.x != 0], na.rm = T), 3)
+    )
   ) %>% 
-  mutate(emotion = factor(emotion, levels = unique(emotion)))
+  pivot_longer(
+    cols = all_of(emotion_vars),
+    names_to = "emotion", 
+    values_to = "intensity"
+  ) %>% 
+  mutate(
+    emotion = factor(emotion, levels = emotion_vars)
+  )
 
 all_distribution %>% 
   ggplot(aes(x = research_stage, y = intensity)) +
-  facet_wrap(~ emotion, nrow = 3) +
   geom_col(fill = "#84CDF0", na.rm = T
     ) +
     labs(
       title = "Intensity of all emotions through the research stages") +
     theme(
-      axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, size = 6)) 
+      axis.text.x = element_text(angle = 
+                                   45, vjust = 1, hjust = 1, size = 6)) +
+  facet_wrap(~ emotion, nrow = 3) 
+
+ggsave(filename = "all_distribution_facet.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 
 ## ===================================================================
@@ -581,7 +754,7 @@ data_analysis_na <- na_counter %>%
 ## -> Barchart
 data_analysis_na %>% 
   ggplot(aes(emotion, na_count)) +
-  geom_bar(stat = "identity", fill = "#98B774") +
+  geom_bar(stat = "identity", fill = "#34B3E0") +
   theme(
     axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
     legend.position = "none") +
@@ -590,15 +763,6 @@ data_analysis_na %>%
 
 ## All stages -> facet_wrap
 na_all <- na_counter %>%
-  mutate(
-    research_stage = 
-      recode(research_stage,
-             "Reality check (e.g., literature search, consultation with colleagues)" = "Reality check", 
-             "Waiting for journal's response and revisions" = "Waiting", 
-             "Project genesis/ first thoughts/ idea creation" = "Project genesis", 
-             "Post-project stage (the project has received a decision (accepted or rejected). At this point, it is either concluded or being revised and prepared for submission to another venue)" = "Post-project stage", 
-             "Preparations (IRB permit, preregistration, experiment preparations)" = "Preparationss"
-    )) %>% 
   pivot_longer(
     cols = -research_stage, 
     names_to = "emotion", 
@@ -610,11 +774,15 @@ na_all %>%
   ggplot(aes(emotion, na_count)) +
   facet_wrap(
     ~ research_stage) +
-  geom_bar(stat = "identity", fill = "#FB8C00") +
+  geom_bar(stat = "identity", fill = "#8DB5E0") +
   theme(
     axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
     legend.position = "none") +
   labs(
       title = "NA values in the research stages")
+
+ggsave(filename = "na_facet_wrap.png", 
+       plot = get_last_plot(), 
+       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 

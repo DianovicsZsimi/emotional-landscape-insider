@@ -26,25 +26,14 @@ longer_heatmap = function(df) {
 
 ## heatmap plot function
 heatmap_plot = function(df) {
-  ggplot(df, 
-         aes(x = emotion, 
-             y = ResponseId, 
-             fill = intensity)) +
+  df %>% 
+  ggplot(aes(x = emotion, y = ResponseId, fill = intensity)) +
     geom_tile(
       inherit.aes = T,
-      position = position_identity(),
-      height = 5, na.rm = T) +
-    scale_fill_gradient(
-      low = "white", 
-      high = "#2b4a78", 
-      limits = c(0, 7)) + 
-    labs(
-      title = "Intensity of emotions on the level of participants", 
-      tag = "1.") +
+      position = position_identity(), na.rm = T) +
     theme(
       axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
-      axis.text.y = element_blank()
-    )
+      axis.text.y = element_blank())
 }
 
 ### 2. functions for the mean_intensity plots
@@ -63,9 +52,6 @@ plot_overall = function(df) {
     geom_col(
       fill = "#76ad6f", na.rm = T
     ) +
-    labs(
-      title = "Overall intensity of emotions", 
-      tag = "2.") +
     theme(
       axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 }
