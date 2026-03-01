@@ -210,7 +210,7 @@ ggplot(world_data, aes(x = long, y = lat, group = group)) +
   ) +
   theme_minimal(base_size = 14) +
   theme(
-    plot.title = element_text(face = "bold"),
+    plot.title = element_text(face = "bold"),s
     axis.text = element_blank(),
     axis.title = element_blank(),
     panel.grid = element_blank()
