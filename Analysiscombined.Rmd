@@ -64,11 +64,12 @@ data_recoded = data_recoded %>%
          contempt = feeling_stage_18,
          hate = feeling_stage_19, 
          anger = feeling_stage_20)%>% 
-  mutate(research_stage = factor(research_stage)) %>% 
-  mutate(area = factor(area)) %>% 
-  mutate(gender = factor(gender)) %>% 
-  mutate(position = factor(position)) %>% 
-  mutate(category_of_work = factor(category_of_work)) %>% 
+  mutate(research_stage = factor(research_stage), 
+         area = factor(area),
+         gender = factor(gender),
+         position = factor(position), 
+         category_of_work = factor(category_of_work), 
+         ) %>% 
   mutate(research_stage = recode(research_stage,	
                                  "Post-project stage (the project has received a decision (accepted or rejected). At this point, it is either concluded or being revised and prepared for submission to another venue)"
                                  = "Post-project stage", 
@@ -81,9 +82,7 @@ data_recoded = data_recoded %>%
                 ~ as.numeric(as.character(.x)))) %>% 
   mutate(feeling_general_1 = as.numeric(as.character(feeling_general_1))) %>% 
   filter(!(dismiss_1 == "No")) %>% 
-  rename(Duration = `Duration..in.seconds.`) 
-
-data_recoded = data_recoded %>% 
+  rename(Duration = `Duration..in.seconds.`) %>% 
    mutate(across(interest:anger, ~ na_if(.x, 0)))
 ```
 
@@ -205,6 +204,8 @@ ggplot(df_area, aes(x = area, y = n)) +
   ) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+ggsave_fn(filename = "area51", plot = get_last_plot(), dir = "plots")
 
 ```
 
