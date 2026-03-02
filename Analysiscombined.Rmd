@@ -17,6 +17,7 @@ library(tidyr)
 library(patchwork)
 library(scales)
 library(magrittr)
+install.packages("apyramid")
 library(apyramid)
 library(rlang)
 ```
@@ -24,12 +25,24 @@ library(rlang)
 
 #data formatting, setup
 ```{r}
-source("D:/Emotional landscape/functionscombined.R")
-raw_data <- read.csv("D:/Emotional landscape/raw_data.csv")
+source("C:/Emotional landscape/functionscombined.R")
+raw_data <- read.csv("C:/Emotional landscape/raw_data.csv")
 
 data_recoded = raw_data[-1:-2, ]
 
+feeling_cols = c("interest","amusement","pride","joy","pleasure",
+  "contentment","love","admiration","relief","compassion", "sadness", "guilt", "regret" ,"shame", 
+                       "disappointment" , "fear", "disgust", "contempt" , "hate","anger")
 
+positive_feelings <- c(
+  "interest","amusement","pride","joy","pleasure",
+  "contentment","love","admiration","relief","compassion"
+)
+negative_feelings <- c("sadness", "guilt", "regret" ,"shame", 
+                       "disappointment" , "fear", "disgust", "contempt" , "hate","anger")
+```
+
+```{r}
 data_recoded = data_recoded %>% 
   rename(interest = feeling_stage_1,
          amusement = feeling_stage_2,
@@ -68,22 +81,12 @@ data_recoded = data_recoded %>%
                 ~ as.numeric(as.character(.x)))) %>% 
   mutate(feeling_general_1 = as.numeric(as.character(feeling_general_1))) %>% 
   filter(!(dismiss_1 == "No")) %>% 
-  rename(Duration = `Duration..in.seconds.`)
-  
+  rename(Duration = `Duration..in.seconds.`) 
+
+data_recoded = data_recoded %>% 
+   mutate(across(interest:anger, ~ na_if(.x, 0)))
 ```
 
-```{r}
-feeling_cols = c("interest","amusement","pride","joy","pleasure",
-  "contentment","love","admiration","relief","compassion", "sadness", "guilt", "regret" ,"shame", 
-                       "disappointment" , "fear", "disgust", "contempt" , "hate","anger")
-
-positive_feelings <- c(
-  "interest","amusement","pride","joy","pleasure",
-  "contentment","love","admiration","relief","compassion"
-)
-negative_feelings <- c("sadness", "guilt", "regret" ,"shame", 
-                       "disappointment" , "fear", "disgust", "contempt" , "hate","anger")
-```
 
 ```{r}
 data_recoded_clean = data_recoded %>% 
@@ -167,7 +170,7 @@ ggplot(df_Gender, aes(x = gender, y = n)) +
 #research area distribution
 unique(data_recoded$area)
 
-df_area <- my_data_clean %>%
+df_area <- data_recoded %>%
   mutate(
     area = str_trim(area),
     area = ifelse(area == "" | is.na(area),
@@ -346,7 +349,7 @@ ggplot(df_position, aes(x = position, y = n)) +
 #work distribution
 unique(data_recoded$category_of_work)
 
-df_category_of_work <- my_data_clean %>%
+df_category_of_work <- data_recoded %>%
   mutate(
     category_of_work = str_trim(category_of_work),
     category_of_work = ifelse(category_of_work == "" | is.na(category_of_work),
