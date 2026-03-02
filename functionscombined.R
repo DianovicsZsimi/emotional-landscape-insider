@@ -135,6 +135,32 @@ pyramid_plot = function(df) {
          title = "Age distribution chart")
 }
 
+# -- ggsave -- 
+## How I used it: 
+    ## plot_heatmap <- heatmap_data %>% ggplot(*the plot itself*)
+    ## plot_heatmap (call the function that plots the data)
+    ## ggsave_fn(filename = "filename1.png", dir = "/Users/path_to/directory")
+ggsave_fn = function(filename, plot, width = 10, height = 7, dpi = 300, dir) {
+  
+  ## Create directory if it doesn't exist
+  if(!dir.exists(dir)) {
+    dir.create(dir, recursive = T)
+  } 
+  
+  ## Build full file path (with file format such as: plot001.png)
+  filepath <- file.path(dir, sprintf("%s.png", filename)) 
+  
+    ggsave(
+      filename = "plot%03d.png",
+      plot = plot, 
+      width = width, 
+      height = height, 
+      dpi = dpi,
+      create.dir = T, 
+      device = "png", 
+    ) 
+  message("Saved as .png: ", filename, ".png")
+}
 
 #Functions Sanyi
 
