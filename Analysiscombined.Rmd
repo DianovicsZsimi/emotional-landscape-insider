@@ -1384,25 +1384,25 @@ mutate(
     mutate(across(sadness:anger,~ 8 - .x)) %>% 
   mutate(mean_feeling = rowMeans(across(interest:anger), na.rm = TRUE))
 
-
 country_emotions = country_emotions %>% 
   pivot_longer(cols = c(country, country_other), 
                names_to = "group", 
                values_to = "country")
 country_emotions = country_emotions %>% 
-filter(!(country == "")) %>% 
-  mutate(country = if_else(country == "N Macedonia", "North Macedonia", country)) %>% 
+  filter(!(country == "")) %>% 
   filter(!(ResponseId == "R_7YyTHrAj3Gc1fHP")) 
-target_id <- "R_7gbaE2EDWdQ3wOo"
-target_text <- "Also Germany Australia and recently China"
 
 
-split_row <- country_emotions %>%
+target_id = "R_7gbaE2EDWdQ3wOo"
+target_text = "Also Germany Australia and recently China"
+
+
+split_row = country_emotions %>%
   filter(ResponseId == target_id, country == target_text) %>%
   mutate(
     country = str_replace_all(country, "(?<=[a-z])(?=[A-Z])", " "),
     country = str_remove(country, "^Also\\s+"),
-    country = str_remove(country, "\\s+and recently\\s+"),
+    country = str_remove(country, "\\s+ and recently\\s+"),
     country = str_squish(country),
     country = str_replace_all(country, "\\s+", ",")) %>%
   separate_rows(country, sep = ",")
@@ -1415,19 +1415,18 @@ country_emotions_clean <- bind_rows(split_row, rest)
 country_emotions_clean = country_emotions_clean %>% 
   mutate(country = if_else(country == "Did my PhD in the US graduated in August and moved to Australia for postdoc", "United States of America", country)) %>% 
   mutate(country = if_else(country == "i work from home from italy", "Italy", country)) %>% 
-  mutate(country = if_else(country == "Israel I am doing a collaboration in italy", "Israel", country)) %>% 
-  mutate(country = if_else(country == "Actually Im from Palestine unfortunatley there is no mention for state of Palestine", "Palestine", country)) %>% 
+  mutate(country = if_else(country == "Israel I am doing a collaboration in italy", "Israel", country)) %>% #because they indicated Italy in the "country" option
+  mutate(country = if_else(country == "Actually Im from Palestine unfortunatley there is no mention for state of Palestine", "Palestine", country)) %>% #???
   mutate(country = if_else(country == "China ", "China", country)) %>% 
-  mutate(country = if_else(country == "USA", "United States of America", country)) %>% 
-  mutate(country = if_else(country == "UK", "United Kingdom of Great Britain and Northern Ireland", country)) %>% 
-  mutate(country = if_else(country == "Makedonija", "Macedonia", country)) %>% 
+  mutate(country = if_else(country == "Makedonija", "Northern Macedonia", country)) %>% 
   mutate(country = if_else(country == "I am from Canada and have done research there", "Canada", country)) %>% 
   mutate(country = if_else(country == "south africa", "South Africa", country)) %>% 
   mutate(country = if_else(country == "England", "United Kingdom of Great Britain and Northern Ireland", country)) %>% 
-  mutate(country = if_else(country == "Macedonia", "North Macedonia", country)) %>%
   filter(!(country == "Africa")) %>% 
-  mutate(country = if_else(country == "United Kingdom of Great Britain and Northern Ireland", "UK", country)) %>% 
-  mutate(country = if_else(country == "United States of America", "USA", country))
+mutate(country = if_else(country == "N Macedonia", "North Macedonia", country)) %>% 
+  filter(!(country %in% c("and","recently"))) %>% 
+  mutate(country = if_else(country == "United States of America", "USA", country)) %>% 
+  mutate(country = if_else(country == "United Kingdom of Great Britain and Northern Ireland", "UK", country))
 
 country_emotions_clean <- bind_rows(
   country_emotions_clean %>%
@@ -1437,13 +1436,6 @@ country_emotions_clean <- bind_rows(
     separate_rows(country, sep = ","),
   country_emotions_clean%>%
     filter(!(ResponseId == "R_2GQ90ZxUHZ6JyFB"  & country == "Burkina Faso USA")))
-country_emotions_clean = bind_rows(
-  country_emotions_clean %>% 
-    filter(ResponseId == "R_7gbaE2EDWdQ3wOo" & country == "AustraliaChina") %>% 
-    mutate(country = str_replace(country, "China\\b", ",China ")) %>% 
-    separate_rows(country, sep = ","), 
-  country_emotions_clean %>% 
-    filter(!(ResponseId == "R_7gbaE2EDWdQ3wOo" & country == "AustraliaChina")))
 
 
 
