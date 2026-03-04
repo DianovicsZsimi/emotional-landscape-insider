@@ -1,4 +1,4 @@
-#Functions combined
+# Functions combined
 library(tidyverse)
 library(ggplot2)
 library(dplyr)
@@ -10,6 +10,10 @@ library(patchwork)
 library(scales)
 library(magrittr)
 library(apyramid)
+
+## =======================================================================================================
+# Functions Bogi
+## =======================================================================================================
 
 ### 1. functions for the heatmaps
 analysis_select = function(df) { 
@@ -135,7 +139,7 @@ pyramid_plot = function(df) {
          title = "Age distribution chart")
 }
 
-# -- ggsave -- 
+# 4. -- ggsave function -- 
 ggsave_fn = function(filename, plot = NULL, width = 10, height = 7, dpi = 300, dir) {
   
   ## Create directory if it doesn't exist
@@ -147,7 +151,7 @@ ggsave_fn = function(filename, plot = NULL, width = 10, height = 7, dpi = 300, d
   
     ggsave(
       filename = filepath,
-      plot = if(is.null(plot)) ggplot2::get_last_plot() else plot, 
+      plot = if(is.null(plot)) ggplot2::get_last_plot() else plot,  ## if plot argument is NULL, then get_last_plot()
       width = width, 
       height = height, 
       dpi = dpi,
@@ -157,12 +161,13 @@ ggsave_fn = function(filename, plot = NULL, width = 10, height = 7, dpi = 300, d
   message("Saved as .png:", filename, ".png")
 }
 
-#Functions Sanyi
+## =======================================================================================================
+# Functions Sanyi
+## =======================================================================================================
 
-#Functions and setup
+# Functions and setup
 overall_emotion_plot_valence <- function(data, group_var, mean_var, color_low = "orange", color_high = "red",
-                                         title_text = "Overall Emotional Landscape")
-{
+                                         title_text = "Overall Emotional Landscape") {
   data %>%
     arrange({{ mean_var }}) %>%
     ggplot(aes(
@@ -233,19 +238,17 @@ overall_emotion_plot <- function(data, group_var, mean_var,
     )
 }
 
-
-
-Nacount = function(data, catvar){
-  
+# NA counter function
+Nacount = function(data, catvar){ 
   data %>% 
     group_by({{catvar}}) %>% 
     summarise(NAcountneg = sum(NAcountneg), NAcountpos = sum(NAcountpos))
 }
 
+## proportion of NA values in positive or negative emotions - preparation of data and visualizing with ggplot
 na_prop_diverging_plot = function(data,
                                   group_var,
                                   title_text = "Proportion of Negative vs Positive NA by Group") {
-  
   df_group <- data %>%
     group_by({{group_var}}) %>%
     summarise(
@@ -277,8 +280,9 @@ na_prop_diverging_plot = function(data,
     theme_minimal()
 }
 
-#Countries
+# Countries
 
+## continents (?) 
 continent_plot_function = function(data, title_text){
   data %>% 
     mutate(dev = mean_emotion - 4) %>% 
@@ -296,6 +300,7 @@ continent_plot_function = function(data, title_text){
   
 }
 
+## valence by continent 
 continent_plot_function_valence = function(data, color_low = "orange",
                                            color_high = "red", title_text) {
   data %>% 
@@ -314,6 +319,7 @@ continent_plot_function_valence = function(data, color_low = "orange",
           legend.position = "none")
 }
 
+## mean emotional intensity by continenty
 continent_emotions_mean_function <- function(data, continent_name) {
   data %>%
     filter(continent == continent_name) %>%
@@ -324,6 +330,8 @@ continent_emotions_mean_function <- function(data, continent_name) {
       .groups = "drop"
     )
 }
+
+## positive emotions by continent 
 continent_emotions_mean_function_pos <- function(data, continent_name) {
   data %>%
     filter(continent == continent_name) %>%
@@ -334,6 +342,8 @@ continent_emotions_mean_function_pos <- function(data, continent_name) {
       .groups = "drop"
     )
 }
+
+## negative emotions by continent
 continent_emotions_mean_function_neg <- function(data, continent_name) {
   data %>%
     filter(continent == continent_name) %>%
