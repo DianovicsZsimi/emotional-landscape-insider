@@ -19,12 +19,14 @@ library(scales)
 library(magrittr)
 library(apyramid)
 library(rlang)
+install.packages("maps")
+library(maps)
 ```
 
 
 #data formatting, setup
 ```{r}
-source("C:/Emotional landscape/functionscombined.R")
+source("C:/Emotional landscape/functionscombined_new.R")
 raw_data <- read.csv("C:/Emotional landscape/raw_data.csv")
 
 data_recoded = raw_data[-1:-2, ]
@@ -82,7 +84,10 @@ data_recoded = data_recoded %>%
   mutate(feeling_general_1 = as.numeric(as.character(feeling_general_1))) %>% 
   filter(!(dismiss_1 == "No")) %>% 
   rename(Duration = `Duration..in.seconds.`) %>% 
-   mutate(across(interest:anger, ~ na_if(.x, 0)))
+   mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
+  mutate(across(ResponseId:Q22_6_TEXT, ~ na_if(.x, ""))) %>% 
+   mutate(cause_stage = if_else(cause_stage == "", NA, cause_stage)) %>% 
+  mutate(across(cause_general:country_other, ~ na_if(.x, ""))) 
 ```
 
 
@@ -106,47 +111,29 @@ data_recoded_clean = data_recoded %>%
 
 ```{r}
 #completion distribution
-data_recoded %>%
-  mutate(Status = ifelse(Finished,
-                         "Completed",
-                         "Not Completed")) %>%
-  count(Status) %>%
-  ggplot(aes(x = Status, y = n)) +
-  geom_col(width = 0.6) +
-  geom_text(aes(label = n),
-            vjust = -0.4,
-            size = 5) +
-  labs(
-    title = "Questionnaire Completion",
-    x = "",
-    y = "Number of Participants"
-  ) +
-  theme_minimal()
+plot_distribution_categorical(data_recoded, "Status", "Questionnaire Completion")
 
+<<<<<<< Updated upstream
 ggsave_fn(filename = "questionaire_completion", plot = get_last_plot(), dir = "plots")
 ```
 
 ```{r}
+=======
+>>>>>>> Stashed changes
 #gender distribution
-df_Gender <- data_recoded %>%
-  mutate(
-    gender = str_trim(gender),
-    gender = ifelse(gender == "" | is.na(gender),
-                    "Missing",
-                    gender),
-    gender = factor(
-      gender,
-      levels = c(
-        "Man",
-        "Woman",
-        "Non-binary / third gender / gender non-conforming",
-        "Prefer not to say",
-        "Missing"
-      )
-    )
-  ) %>%
-  count(gender)
+plot_distribution_categorical(
+  data_recoded,
+  "gender",
+  "Participant Gender Distribution",
+  custom_levels = c(
+    "Man",
+    "Woman",
+    "Non-binary / third gender / gender non-conforming",
+    "Prefer not to say"
+  )
+)
 
+<<<<<<< Updated upstream
 df_Gender
 
 ggplot(df_Gender, aes(x = gender, y = n)) +
@@ -391,23 +378,44 @@ ggplot(df_category_of_work, aes(x = category_of_work, y = n)) +
   ) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
+=======
+#research area distribution
+plot_distribution_categorical(data_recoded, "area", "Participants by Research Area")
+
+#research stage distribution
+plot_distribution_categorical(
+  data_recoded,
+  "research_stage",
+  "Participants by Research Stage",
+  remove_parentheses = TRUE
+)
+
+#position distribution
+plot_distribution_categorical(data_recoded, "position", "Participants by Position")
+
+#work distribution
+plot_distribution_categorical(data_recoded, "category_of_work", "Participants by Category of Work")
+>>>>>>> Stashed changes
 
 ggsave_fn(filename = "work_distribution", plot = get_last_plot(), dir = "plots")
 
 ```
-
 ```{r}
+<<<<<<< Updated upstream
 # age distribution
+=======
+#Other distributions
+#age distribution
+
+>>>>>>> Stashed changes
 df_age <- data_recoded %>%
   mutate(
     age = as.numeric(age)
   ) %>%
   filter(!is.na(age))
 
-unique(my_data_clean$age)
-
 ggplot(df_age, aes(x = age)) +
-  geom_histogram(binwidth = 1, color = "white", fill = "grey") +
+  geom_histogram(binwidth = 1, color = "white") +
   scale_x_continuous(breaks = seq(20, 100, by = 10)) +
   scale_y_continuous(breaks = seq(0, 50, by = 5)) +
   labs(
@@ -415,7 +423,7 @@ ggplot(df_age, aes(x = age)) +
     x = "Age",
     y = "Number of Participants"
   ) +
-  theme_minimal(base_size = 15)
+  theme_minimal (base_size = 14)
 
 ggsave_fn(filename = "age_distribution", plot = get_last_plot(), dir = "plots")
 
@@ -426,11 +434,88 @@ median_age <- median(df_age$age, na.rm = TRUE)
 min_age <- min(df_age$age, na.rm = TRUE)
 max_age <- max(df_age$age, na.rm = TRUE)
 
-df_mean_age = data.frame(mean_age,
-sd_age,
-median_age,
-min_age,
-max_age)
+mean_age
+sd_age
+median_age
+min_age
+max_age
+```
+
+```{r}
+#questionnaire dropout spikes
+
+df_dropout <- data_recoded %>%
+  mutate(Progress = as.numeric(Progress)) %>%
+  filter(!is.na(Progress), Progress < 100)
+
+df_dropout_counts <- df_dropout %>%
+  count(Progress) %>%
+  arrange(Progress) %>%
+  mutate(
+    Progress = factor(Progress, levels = Progress)
+  )
+
+mean_progress <- mean(df_dropout$Progress, na.rm = TRUE)
+sd_progress   <- sd(df_dropout$Progress, na.rm = TRUE)
+
+mean_progress
+sd_progress
+
+ggplot(df_dropout_counts, aes(x = Progress, y = n)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = n),
+            vjust = -0.4,
+            size = 4) +
+  labs(
+    title = "Dropout Points Across Questionnaire",
+    x = "Progress (%) at Dropout",
+    y = "Number of Participants"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(),
+    axis.title = element_text(),
+    axis.text.x = element_text()
+  )
+
+
+```
+
+```{r}
+df_country_map <- data_recoded %>%
+  mutate(country = ifelse(country == "" | is.na(country), NA, country)) %>%
+  filter(!is.na(country)) %>%
+  count(country) %>%
+  mutate(country = tolower(country))
+
+world_map <- map_data("world") %>%
+  mutate(region = tolower(region))
+
+world_data <- left_join(world_map, df_country_map, by = c("region" = "country"))
+
+ggplot(world_data, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill = n), color = "white", linewidth = 0.1) +
+  scale_fill_gradient(
+    low = "#deebf7",
+    high = "#08519c",
+    na.value = "grey95"
+  ) +
+  labs(
+    title = "Participants by Country",
+    fill = "Participants"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank()
+)
+
+df_country_ranked <- df_country_map %>%
+  arrange(desc(n))
+
+df_country_ranked
 
 ```
 

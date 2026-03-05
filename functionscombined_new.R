@@ -355,3 +355,54 @@ continent_emotions_mean_function_neg <- function(data, continent_name) {
     )
 }
 
+#Categorical Distribution Plot Function
+plot_distribution_categorical <- function(data,
+                                          variable_name,
+                                          title,
+                                          custom_levels = NULL,
+                                          remove_parentheses = FALSE,
+                                          angle = 30) {
+  data_clean <- data[-c(1, 2), ]
+  
+  df_counts <- data_clean %>%
+    mutate(
+      var = as.character(.data[[variable_name]]),
+      var = ifelse(var == "" | is.na(var), NA, var)
+    ) %>%
+    filter(!is.na(var)) %>%
+    count(var)
+  
+  if (!is.null(custom_levels)) {
+    df_counts <- df_counts %>%
+      mutate(var = factor(var, levels = custom_levels)) %>%
+      filter(!is.na(var))
+  } else {
+    df_counts <- df_counts %>%
+      arrange(desc(n)) %>%
+      mutate(var = factor(var, levels = var))
+  }
+  
+  p <- ggplot(df_counts, aes(x = var, y = n)) +
+    geom_col(width = 0.4) +
+    geom_text(aes(label = n),
+              vjust = -0.4,
+              size = 4) +
+    labs(
+      title = title,
+      x = "",
+      y = "Number of Participants"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      plot.title = element_text(),
+      axis.text.x = element_text(size = 12, angle = angle, hjust = 1)
+    )
+  
+  if (remove_parentheses) {
+    p <- p + scale_x_discrete(
+      labels = function(x) sub("\\s*\\(.*\\)", "", x)
+    )
+  }
+  
+  return(p)
+}
