@@ -61,7 +61,7 @@ plot_overall = function(df) {
                y = mean_intensity)) +
     scale_y_continuous(limits = c(0, 7)) +
     geom_col(
-      fill = "#76ad6f", na.rm = T
+      fill = color_vector[stage], na.rm = T
     ) +
     theme(
       axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
@@ -396,7 +396,8 @@ plot_distribution_categorical <- function(data,
     theme(
       plot.title = element_text(),
       axis.text.x = element_text(size = 12, angle = angle, hjust = 1)
-    )
+    ) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.3)))
   
   if (remove_parentheses) {
     p <- p + scale_x_discrete(

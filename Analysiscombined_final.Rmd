@@ -7,6 +7,22 @@ output: html_document
 
 #load libraries
 ```{r}
+# Updated library loading with checks for installation
+
+if (!require("tidyverse")) install.packages("tidyverse")
+if (!require("ggplot2")) install.packages("ggplot2")
+if (!require("dplyr")) install.packages("dplyr")
+if (!require("stringr")) install.packages("stringr")
+if (!require("rstatix")) install.packages("rstatix")
+if (!require("ggthemes")) install.packages("ggthemes")
+if (!require("tidyr")) install.packages("tidyr")
+if (!require("patchwork")) install.packages("patchwork")
+if (!require("scales")) install.packages("scales")
+if (!require("magrittr")) install.packages("magrittr")
+if (!require("apyramid")) install.packages("apyramid")
+if (!require("rlang")) install.packages("rlang")
+if (!require("maps")) install.packages("maps")
+
 library(tidyverse)
 library(ggplot2)
 library(dplyr)
@@ -19,17 +35,18 @@ library(scales)
 library(magrittr)
 library(apyramid)
 library(rlang)
-install.packages("maps")
 library(maps)
 ```
 
 
 #data formatting, setup
 ```{r}
+# Updated data loading with checks for missing data handling
 source("functionscombined_new.R")
-raw_data <- read.csv("raw_data.csv")
+raw_data <- read.csv("raw_data.csv", na.strings = c("", "NA", "NaN"))
 
-data_recoded = raw_data[-1:-2, ]
+# Changed to data_clean for easier handling for next wrangling
+data_clean = raw_data[-1:-2, ]
 
 feeling_cols = c("interest","amusement","pride","joy","pleasure",
   "contentment","love","admiration","relief","compassion", "sadness", "guilt", "regret" ,"shame", 
@@ -44,7 +61,7 @@ negative_feelings <- c("sadness", "guilt", "regret" ,"shame",
 ```
 
 ```{r}
-data_recoded = data_recoded %>% 
+data_recoded = data_clean %>% 
   rename(interest = feeling_stage_1,
          amusement = feeling_stage_2,
          pride = feeling_stage_3,
@@ -84,14 +101,18 @@ data_recoded = data_recoded %>%
   mutate(feeling_general_1 = as.numeric(as.character(feeling_general_1))) %>% 
   filter(!(dismiss_1 == "No")) %>% 
   rename(Duration = `Duration..in.seconds.`) %>% 
-   mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
-  mutate(across(ResponseId:Q22_6_TEXT, ~ na_if(.x, ""))) %>% 
-   mutate(cause_stage = if_else(cause_stage == "", NA, cause_stage)) %>% 
-  mutate(across(cause_general:country_other, ~ na_if(.x, ""))) 
+  mutate(across(interest:anger, ~ na_if(.x, 0))) 
+
+# Updated missing data handling, this is not needed as na.strings in read.csv handles this across the data
+# %>% 
+#   mutate(across(ResponseId:Q22_6_TEXT, ~ na_if(.x, ""))) %>% 
+#   mutate(cause_stage = if_else(cause_stage == "", NA, cause_stage)) %>% 
+#   mutate(across(cause_general:country_other, ~ na_if(.x, ""))) 
 ```
 
 
 ```{r}
+# Why is this a new dataset? As I understand this is only for calculating missing values, if so you can just do this in the data_recoded dataset, no need to create a new one.
 data_recoded_clean = data_recoded %>% 
   select(ResponseId,gender, position, research_stage, category_of_work,
          country, country_other, area, all_of(feeling_cols), feeling_general_1) %>% 
@@ -110,10 +131,13 @@ data_recoded_clean = data_recoded %>%
 # ========================================================================================================
 
 ```{r}
-plot_distribution_categorical(my_data, "Status", "Questionnaire Completion")
+# updated dataset to match the correct one
+plot_distribution_categorical(data_recoded, "Status", "Questionnaire Completion")
 ```
 
 ```{r}
+# The plot is hard to read, I suggest cleaning the labels
+
 #gender distribution
 plot_distribution_categorical(
   data_recoded,
@@ -148,7 +172,7 @@ plot_distribution_categorical(
 
 ```{r}
 #position distribution
-plot_distribution_categorical(my_data, "position", "Participants by Position")
+plot_distribution_categorical(data_recoded, "position", "Participants by Position")
 ```
 
 ```{r}
@@ -236,7 +260,12 @@ df_country_map <- data_recoded %>%
   mutate(country = ifelse(country == "" | is.na(country), NA, country)) %>%
   filter(!is.na(country)) %>%
   count(country) %>%
-  mutate(country = tolower(country))
+  mutate(country = tolower(country),
+         country = dplyr::case_when(
+           country == "united states of america" ~ "usa",
+           country == "united kingdom of great britain and northern ireland" ~ "uk",
+           TRUE ~ country
+         ))
 
 world_map <- map_data("world") %>%
   mutate(region = tolower(region))
@@ -274,6 +303,59 @@ df_country_ranked
 
 # Bogi
 # ========================================================================================================
+
+# For loop solution
+```{r}
+color_vector = c(
+  "Data analysis" = "#02452B", 
+  "Data collection" = "#84CDF0", 
+  "Post-project stage" = "#75069D",
+  "Preparations" = "#2b4a78", 
+  "Waiting" = "#9D3B06", 
+  "Project genesis/ first thoughts/ idea creation" = "#B5E6D0",
+  "Report writing" = "#E7C582", 
+  "Reality check" = "#FFBF65",
+  "Revisions" = "#c6a1f9"
+)
+
+for (stage in unique(na.omit(data_recoded$research_stage))) {
+  stage_data <- data_recoded %>% 
+    filter(research_stage == stage) %>% 
+    analysis_select() %>% 
+    longer_heatmap() %>% 
+    sum_analysis()
+  
+  plot <- stage_data %>% 
+    plot_overall() + 
+    labs(
+      title = paste("Overall intensity of emotions in the", stage, "stage")
+    ) 
+  
+  print(plot)
+}
+
+for (stage in unique(na.omit(data_recoded$research_stage))) {
+  stage_data <- data_recoded %>%
+    filter(research_stage == stage) %>%
+    analysis_select()
+  
+  stage_heatmap <- stage_data %>% 
+  longer_heatmap()
+  
+  plot <- stage_heatmap %>%
+    heatmap_plot() +
+    scale_fill_gradient(
+      low = "white", 
+      high = color_vector[stage], 
+      limits = c(0, 7)) +
+  labs(
+      title = paste("Intensity of emotions on the level of participants in the", stage, "stage"))
+  
+    print(plot)
+}
+  
+```
+
 
 # PART 1: Emotions By Research Stage
 ## 1. Emotions during the Data Analysis stage
@@ -598,9 +680,6 @@ ggplot(summary_genders,
   ) +
   theme_minimal()
 
-ggsave(filename = "emotions_men_women.png", 
-       plot = get_last_plot(), 
-       path = "/Users/ludmanyboglarka/Documents/emotional_landscape/plots" )
 ```
 
 # --------------------------------------------------------------------------------------------------------
@@ -608,13 +687,13 @@ ggsave(filename = "emotions_men_women.png",
 ## -> additional analysis: explorative, no visualization
 ```{r}
 ## flag where SD of emotions are > 1 
-sd_flag <- data_recoded%>% 
+sd_flag <- data_recoded %>% 
   select(
     -Progress, -Duration, -Finished, -dismiss_1, -Q22, -Q22_6_TEXT 
   ) %>% 
-  mutate(across(2:21, as.numeric),
-         mean_landscape = rowMeans(across(2:21), na.rm = T),
-         sd_landscape = apply(across(2:21), 1, sd, na.rm = T)) %>% 
+  mutate(across("interest":"anger", as.numeric),
+         mean_landscape = rowMeans(across("interest":"anger"), na.rm = T),
+         sd_landscape = apply(across("interest":"anger"), 1, sd, na.rm = T)) %>% 
   filter(
     !(is.na(mean_landscape)),
     !(is.na(sd_landscape)), 
@@ -959,7 +1038,6 @@ combined_gender
 
 #overall emotions visualization by research stage
 ```{r}
-
 research_stage_emotions = data_recoded_clean %>% 
   select(research_stage, all_of(feeling_cols)) %>% 
   filter(!(research_stage == ""))
