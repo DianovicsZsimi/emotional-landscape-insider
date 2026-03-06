@@ -1,5 +1,7 @@
 "Emotional landscape project"
 install.packages("ggthemes")
+install.packages("patchwork")
+install.packages("apyramid")
 library(tidyverse)
 library(ggplot2)
 library(dplyr)
@@ -8,8 +10,11 @@ library(rstatix)
 library(ggthemes)
 library(tidyr)
 library(patchwork)
+library(scales)
+library(rlang)
 
 raw_data = read.csv("C:/Emotional landscape/raw_data.csv")
+raw_data = read.csv("D:/Emotional landscape/raw_data.csv")
 
 
 data_recoded = raw_data[-1:-2, ]
@@ -34,9 +39,7 @@ data_recoded = data_recoded %>%
          feeling_disgust = feeling_stage_17, 
          feeling_contempt = feeling_stage_18,
          feeling_hate = feeling_stage_19, 
-         feeling_anger = feeling_stage_20)
-
-data_recoded = data_recoded %>% 
+         feeling_anger = feeling_stage_20)%>% 
   mutate(research_stage = factor(research_stage)) %>% 
   mutate(area = factor(area)) %>% 
   mutate(gender = factor(gender)) %>% 
@@ -48,9 +51,7 @@ data_recoded = data_recoded %>%
                                  "Preparations (IRB permit, preregistration, experiment preparations)" = 
                                    "Preparations",
                                  "Reality check (e.g., literature search, consultation with colleagues)" =
-                                   "Reality check"
-                                 
-  )) %>% 
+                                   "Reality check")) %>% 
   mutate(across(starts_with("feeling_"),
                 ~ as.numeric(as.character(.x))))
   
@@ -152,7 +153,7 @@ overall_emotion_plot <- function(data, group_var, mean_var,
       y = ""
     ) +
     theme(
-      axis.text.y = element_text(size = 11, angle = 45, vjust = -3),
+      axis.text.y = element_text(size = 11),
       plot.title = element_text(hjust = 0.5, face = "bold"),
       legend.position = "none"
     )
@@ -167,78 +168,51 @@ Nacount = function(data, catvar){
     summarise(NAcountneg = sum(NAcountneg), NAcountpos = sum(NAcountpos))
 }
 
-na_prop_diverging_plot <- function(data,
-                                   stage_var,
-                                   title_text = "Proportion of Negative vs Positive NA by Group",
-                                   show_total_N = TRUE) {
+na_prop_diverging_plot = function(data,
+                                          group_var,
+                                          title_text = "Proportion of Negative vs Positive NA by Group") {
   
-  df_stage <- data %>%
-    group_by({{stage_var}}) %>%
+  df_group <- data %>%
+    group_by({{group_var}}) %>%
     summarise(
       NApos = sum(NAcountpos, na.rm = TRUE),
-      NAneg = sum(NAcountneg, na.rm = TRUE),
-      .groups = "drop"
+      NAneg = sum(NAcountneg, na.rm = TRUE)
     ) %>%
     mutate(
       total_NA = NApos + NAneg,
       pos_prop = NApos / total_NA,
       neg_prop = NAneg / total_NA,
-      balance  = pos_prop - neg_prop   # for ordering
+      balance  = pos_prop - neg_prop
     )
   
-  p <- ggplot(df_stage,
-              aes(y = reorder({{stage_var}}, balance))) +
-    
-    # left side = negative NAs (as proportion)
-    geom_col(aes(x = -neg_prop),
-             fill = "steelblue",
-             width = 0.6) +
-    
-    # right side = positive NAs (as proportion)
-    geom_col(aes(x =  pos_prop),
-             fill = "firebrick",
-             width = 0.6) +
-    
-    # center line
+  df_group[[deparse(substitute(group_var))]] <- 
+    reorder(df_group[[deparse(substitute(group_var))]], df_group$balance)
+  
+  ggplot(df_group, aes(y = {{group_var}})) +
+    geom_col(aes(x = -neg_prop), fill = "steelblue", width = 0.6) +
+    geom_col(aes(x =  pos_prop), fill = "firebrick", width = 0.6) +
     geom_vline(xintercept = 0, linetype = "dashed") +
-    
     scale_x_continuous(
       limits = c(-1, 1),
-      labels = function(x) percent(abs(x), accuracy = 1)
+      breaks = seq(-1, 1, by = 0.25),
+      labels = paste0(abs(seq(-1, 1, by = 0.25))* 100, "%")
     ) +
-    
-    labs(
-      title = title_text,
-      x = "Proportion within group",
-      y = ""
-    ) +
-    theme_tufte() +
-    theme(
-      plot.title = element_text(hjust = 0.5, face = "bold"),
-      axis.text.y = element_text(size = 11)
-    )
-  
-  if (show_total_N) {
-    p <- p +
-      geom_text(aes(x = 0,
-                    label = paste0("N = ", total_NA)),
-                vjust = -0.3,
-                size = 3)
-  }
-  
-  p
+    labs(title = title_text,
+         x = "Proportion within category",
+         y = "") +
+    theme_minimal()
 }
 
 data_recoded_clean = data_recoded %>% 
   select(ResponseId,gender, position, research_stage, category_of_work,
          country, country_other, area, starts_with("feeling_")) %>% 
-  mutate(across(feeling_interest:feeling_anger, ~ na_if(.x, 0))) %>% 
+  mutate(across(feeling_interest:feeling_general_1, ~ na_if(.x, 0))) %>% 
   mutate(NAcount = rowSums(is.na(across(feeling_interest:feeling_anger)))) %>%
   mutate(NAcountpos = rowSums(is.na(across(feeling_interest:feeling_compassion)))) %>% 
   mutate(NAcountneg = rowSums(is.na(across(feeling_sadness:feeling_anger)))) %>% 
   mutate(across(feeling_sadness:feeling_anger, ~ 8 - .x)) %>% 
-  select(-28) %>% 
-  filter(!if_all(starts_with("feeling_"), is.na))
+  filter(!if_all(starts_with("feeling_"), is.na)) %>% 
+  select(-feeling_general_1)
 
 positive_feelings <- c(
   "feeling_interest","feeling_amusement","feeling_pride","feeling_joy","feeling_pleasure",
@@ -260,7 +234,7 @@ overall_emotion_plot_valence <- function(data, group_var, mean_var, color_low = 
     scale_x_continuous(
       limits = c(0, 7),
       breaks = 0:7,
-      labels = 0:7) +
+      labels = 0:7) + 
     scale_fill_gradient(low = {{color_low}}, high = {{color_high}}) +
     theme_tufte()+
     labs(
@@ -268,11 +242,10 @@ overall_emotion_plot_valence <- function(data, group_var, mean_var, color_low = 
       x = "",
       y = "") +
     theme(
-      axis.text.y   = element_text(size = 11, angle = 45, vjust = -3),
+      axis.text.y   = element_text(size = 11, angle = 45, vjust = -1),
       plot.title    = element_text(hjust = 0.5, face = "bold"),
       legend.position = "none")
 }
-
 
 
 #overall emotions visualization by gender
@@ -290,7 +263,7 @@ gender_emotions_negative = gender_emotions %>%
 
 gender_na = Nacount(data_recoded_clean, gender) %>% 
   filter(!(gender == ""))
-na_prop_diverging_plot(gender_na, gender, "Proportion of NA's in Positive and Negative Emotions", show_total_N = FALSE)
+na_prop_diverging_plot(gender_na, gender, "Proportion of NA's in Positive and Negative Emotions")
 
 
 gender_emotions = emotion_function(gender_emotions, gender)
@@ -340,7 +313,7 @@ research_stage_emotions = data_recoded_clean %>%
 
 research_stage_na = Nacount(data_recoded_clean, research_stage) %>% 
   filter(!(research_stage == ""))
-na_prop_diverging_plot(research_stage_na, research_stage, "Proportion of NA's in Positive and Negative Emotions", show_total_N = FALSE)
+na_prop_diverging_plot(research_stage_na, research_stage, "Proportion of NA's in Positive and Negative Emotions")
 
 research_stage_emotions = emotion_function(research_stage_emotions, research_stage)
 
@@ -399,8 +372,7 @@ area_na = Nacount(data_recoded_clean, area) %>%
 na_prop_diverging_plot(
   area_na,
   area,
-  "Proportion of NA's in Positive and Negative Emotions",
-  show_total_N = FALSE)
+  "Proportion of NA's in Positive and Negative Emotions")
 area_emotions = emotion_function(area_emotions, area)
 
 area_emotions_mean = mean_function(area_emotions, area)
@@ -460,9 +432,7 @@ position_na = Nacount(data_recoded_clean, position) %>%
 na_prop_diverging_plot(
   position_na,
   position,
-  "Proportion of NA's in Positive and Negative Emotions",
-  show_total_N = FALSE
-)
+  "Proportion of NA's in Positive and Negative Emotions")
 
 
 position_emotions = emotion_function(position_emotions, position)
@@ -495,7 +465,7 @@ position_neg = overall_emotion_plot_valence(
   color_high = "blue",
   "Negative Emotions"
 )
-position_neg = position_neg + theme(axis.text.y = element_blank())
+
 
 overall_emotion_plot(
   position_emotions_mean,
@@ -504,8 +474,8 @@ overall_emotion_plot(
   "Overall Emotional Landscape by Position"
 )
 
-
-combined_position
+position_combined = position_pos + position_neg
+position_combined
 
 combined_emotions <- bind_rows(
   area_emotions_mean %>% 
@@ -536,8 +506,9 @@ mutate(
     mutate(across(feeling_sadness:feeling_anger,~ 8 - .x)) %>% 
   mutate(mean_feeling = rowMeans(across(feeling_interest:feeling_anger), na.rm = TRUE))
 
+view(country_emotions)
 country_emotions = country_emotions %>% 
-  select(-24) %>% 
+  select(-feeling_general_1) %>% 
   pivot_longer(cols = c(country, country_other), 
                names_to = "group", 
                values_to = "country")
@@ -637,6 +608,8 @@ country_emotions_clean_neg = country_emotions_clean %>%
   filter(!(NAcount > 5)) %>% 
   mutate(mean_feeling = rowMeans(across(feeling_sadness:feeling_anger), na.rm = TRUE))
   
+view(country_emotions_clean_neg)
+view(country_emotions_clean)
 levels(country_emotions_clean$country)
 
 
@@ -753,7 +726,7 @@ southamerica_emotions_mean = continent_emotions_mean_function(country_emotions_c
 southamerica_emotions_mean_pos = continent_emotions_mean_function_pos(country_emotions_clean_pos, "South America/ Central America")
 southamerica_emotions_mean_neg = continent_emotions_mean_function_neg(country_emotions_clean_neg, "South America/ Central America")
 
-continent_plot_function(SouthAmerica_emotions_mean, "Overall Emotional Landscape - South America/Central America")
+continent_plot_function(southamerica_emotions_mean, "Overall Emotional Landscape - South America/Central America")
 southamerica_pos = continent_plot_function_valence(southamerica_emotions_mean_pos, color_low = "orange", color_high = "red", "Positive Emotions")
 southamerica_neg = continent_plot_function_valence(southamerica_emotions_mean_neg, color_low = "lightblue", color_high = "blue", "Negative Emotions")
 southamerica_combined = southamerica_pos + southamerica_neg
@@ -768,6 +741,7 @@ oceania_pos = continent_plot_function_valence(oceania_emotions_mean_pos,color_lo
 oceania_neg = continent_plot_function_valence(oceania_emotions_mean_neg,color_low = "lightblue",color_high = "blue","Negative Emotions")
 oceania_combined = oceania_pos + oceania_neg
 oceania_combined
+view(oceania_emotions_mean_neg)
 
 #Based on Frequency
 
@@ -786,7 +760,8 @@ country_11_groups <- country_emotions_clean %>%
   summarise(
     mean_emotion = mean(mean_feeling, na.rm = TRUE),
     n = n(),   # optional, but nice to keep
-    .groups = "drop")
+    .groups = "drop") %>% 
+  reorder(mean_emotion)
 
 country_11_groups %>% 
   mutate(dev = mean_emotion - 4) %>% 
