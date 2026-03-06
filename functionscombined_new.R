@@ -109,6 +109,7 @@ age_grouping = function(df) {
     select(
       ResponseId, age, gender
     ) %>% 
+    filter(!(gender %in% c("Non-binary / third gender / gender non-conforming", NA, "Prefer not to say"))) %>% 
     mutate(
       age_group = 
         case_when(
@@ -133,6 +134,7 @@ age_grouping = function(df) {
 ## age pyramid plot
 pyramid_plot = function(df) {
   df %>% 
+    filter(!(gender %in% c("Non-binary / third gender / gender non-conforming", NA, "Prefer not to say"))) %>% 
     age_pyramid(age_group = age_group, split_by = gender) +
     labs(x = "Age group", 
          y = "Number of people", 
