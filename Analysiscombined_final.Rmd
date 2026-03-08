@@ -700,88 +700,47 @@ great_sd <- sd_flag %>%
 
 # --------------------------------------------------------------------------------------------------------
 # PART 4: Descriptive statistics of participants with emotional landscapes dominated by mainly negative or positive emotions
-# 4.1. Participants with negative_mean > positive_mean 
-## 4.1.1. Age distributions 
+# 4.1. Age distributions 
+## negative > positive - preparing data, saving plot as an object
 ```{r}
+## prepare data -> positive, negative emotional averages
 averages_data <- data_recoded %>% 
   select(
-    -Progress, -Duration, -Finished, -dismiss_1,
+    -Progress, -Duration, -Finished, -dismiss_1, 
   ) %>% 
   mutate(
     across(interest:anger, as.numeric), 
     pos_mean = rowMeans(across(interest:compassion), na.rm = T), 
     neg_mean = rowMeans(across(sadness:anger), na.rm = T), 
     across(pos_mean:neg_mean, ~ na_if(., NaN))
+  ) %>% 
+  select(
+    ResponseId, research_stage, interest:anger, category_of_work, position, area, age, country, country_other, pos_mean, neg_mean, gender
   )
 
 ## filter: average intensity of emotions is higher regarding the negative emotions
 negative_means <- averages_data %>% 
   filter(
-    ((pos_mean < neg_mean) | is.na(pos_mean)), 
-    !is.na(neg_mean)
+    (pos_mean < neg_mean), 
+    !is.na(pos_mean), 
+    !is.na(neg_mean) 
   )
 
 ## classifying the data types of columns
 age_negative <- negative_means %>%
-  pos_neg_classify()
+  pos_neg_classify() ## age: as_numeric, gender: as_factor, filter if age of gender is NA
 
 ## creating age groups
 age_negative_counts <- age_negative %>% 
-  age_grouping() %>% 
+  age_grouping() %>% ## age groups, from 20-100 years, by 10 years
   droplevels()
 
 ## pyramid to explore the age distribution, split by gender 
-  pyramid_plot(age_negative_counts) 
-```
-## 4.1.2. Position
-```{r}
-position_negative <- negative_means %>%
-  rename(category = position) %>% ## rename column for functions
-  categories_prepare()
-
-## pie chart for the distribution of positions
-position_negative %>% 
-  piechart_plot()
+negative_age_plot <- pyramid_plot(age_negative_counts) +
+  labs(title = "Overally negative emotions")
 ```
 
-## 4.1.3. Category_of_work
-```{r}
-work_negative <- negative_means %>% 
-  rename(category = category_of_work) %>% ## rename column for the functions
-  categories_prepare()
-
-## pie chart for the distribution of the categories
-work_negative %>% 
-  piechart_plot()
-```
-
-## 4.1.4. Research area 
-```{r}
-area_negative <- negative_means %>% 
-  rename(category = area) %>% ## rename column for the functions
-  categories_prepare()
-
-area_negative %>% 
-  piechart_plot()
-
-```
-## 4.1.5. Research stage
-```{r}
-stage_negative <- negative_means %>% 
-  rename(category = research_stage) %>% ## rename column for functions 
-  categories_prepare() %>% 
-  mutate(
-    category = stringr::str_trunc(category, 40))
-
-## piechart plot
-stage_negative %>% 
-  piechart_plot()
-
-```
-
-# --------------------------------------------------------------------------------------------------------
-# 4.2. Participants with negative_mean > positive_mean 
-## 4.2.1. Age distributions
+## positive > negative - prepare data, save plot as an object
 ```{r}
 positive_means <- averages_data %>% 
   filter(
@@ -795,64 +754,174 @@ age_positive <- positive_means %>%
 
 ## creating age groups
 age_positive_counts <- age_negative %>% 
-  age_grouping()
+  age_grouping() %>% 
+  droplevels()
 
 ## creating the age pyramid
-age_positive_counts %>% 
-  pyramid_plot()
-
-
+positive_age_plot <- pyramid_plot(age_positive_counts) +
+  labs(title = "Overally positive emotions")
 ```
 
-## 4.2.2. Position
+## Combining the two age pyramids
+```{r}
+age_comparisons <- positive_age_plot | negative_age_plot
+
+age_comparisons +
+  plot_annotation(title = "Age distributions")
+```
+
+# 4.2. Position 
+## negative > positive - prepare data, create piechart
+```{r}
+position_negative <- negative_means %>%
+  rename(category = position) %>% ## rename column for functions
+  categories_prepare() ## counting the numbers of unique values in the subgroups of the category (in this case, the numbers of people in the different positions), creating the percentage of each subgroup in the category
+
+## pie chart for the distribution of positions
+piechart_position_negative <- position_negative %>% 
+  piechart_plot(legend_name = "Position") +
+  labs(
+    title = "Negative emotions more dominant"
+  )
+
+piechart_position_negative
+```
+
+## positive > negative - create piechart 
 ```{r}
 position_positive <- positive_means %>%
   rename(category = position) %>% ## rename column for functions
   categories_prepare()
 
 ## pie chart for the distribution of positions
-position_positive %>% 
-  piechart_plot()
+piechart_position_positive <- position_positive %>% 
+  piechart_plot(legend_name = "Position") +
+  labs(title = "Positive emotions more dominant")
 
 ```
 
-## 4.2.3. Category_of_work
+## Combine two piecharts 
+```{r}
+piechart_position <- (piechart_position_negative + piechart_position_positive) & 
+  plot_layout(guides = "collect") & 
+  theme(legend.position = "bottom")
+
+
+piechart_position +
+  plot_annotation(title = "Overall intensity of emotions within the positions")
+```
+
+# 4.3. Category_of_work
+## negative > positive -> prepare data, create piechart
+```{r}
+work_negative <- negative_means %>% 
+  rename(category = category_of_work) %>% ## rename column for the functions
+  categories_prepare()
+
+## pie chart for the distribution of the categories
+work_negative_piechart <- work_negative %>% 
+  piechart_plot(legend_name = "Category of work") +
+  labs(title = "Negative emotions more dominant")
+```
+## positive > negative -> create piechart, prepare data
 ```{r}
 work_positive <- positive_means %>% 
   rename(category = category_of_work) %>% ## rename column for the functions
   categories_prepare()
 
 ## pie chart for the distribution of the categories
-work_positive %>% 
-  piechart_plot()
-
-
+work_positive_piechart <- work_positive %>% 
+  piechart_plot(legend_name = "Category of work") + 
+  labs(title = "Positive emotions more dominant")
 ```
-## 4.2.4. Research area 
+## Combine two piecharts
+```{r}
+work_piecharts <- (work_negative_piechart + work_positive_piechart) & 
+  plot_layout(guides = "collect") & 
+  theme(legend.position = "bottom")
+
+work_piecharts +
+  plot_annotation(title = "Overall intensity of emotions within the different categories of work")
+```
+
+# 4.4. Research area 
+## negative > positive -> prepare dataset, create piechart 
+```{r}
+area_negative <- negative_means %>% 
+  rename(category = area) %>% ## rename column for the functions
+  categories_prepare() 
+
+area_negative_piechart <- piechart_plot(area_negative, legend_name = "Research area") + 
+  labs(title = "Negative emotions more dominant")
+
+area_negative_piechart
+```
+
+## positive > negative -> prepare dataset, create piechart 
 ```{r}
 area_positive <- positive_means %>% 
   rename(category = area) %>% ## rename column for the functions
   categories_prepare()
 
-area_positive %>% 
-  piechart_plot()
+area_positive_piechart <- piechart_plot(area_negative, legend_name = "Research stage") + 
+  labs(title = "Positive emotions more dominant")
 
+area_positive_piechart
 ```
 
-## 4.2.5. Research stage
+## Combine piecharts 
+```{r}
+area_piecharts <- (area_negative_piechart + area_positive_piechart) & 
+  plot_layout(guides = "collect") & 
+  theme(legend.position = "bottom")
+
+area_piecharts +
+  plot_annotation(title = "Overall intensity of emotions within the different research areas")
+
+## percentages are the same - causes?? 
+```
+
+# 4.5. Research stage
+```{r}
+stage_negative <- negative_means %>% 
+  rename(category = research_stage) %>% ## rename column for functions 
+  categories_prepare() %>% 
+ mutate(
+   category = recode(category,
+                           "Project genesis" = "Project genesis/ first thoughts/ idea creation"))
+
+## piechart plot
+stage_negative_piechart <- stage_negative %>% 
+  piechart_plot(legend_name = "Research stage") + 
+  labs(
+      title = "Negative emotions more dominant"
+    )
+```
+
+## positive > negative -> prepare df, create piechart
 ```{r}
 stage_positive <- positive_means %>% 
   rename(category = research_stage) %>% ## rename column for functions 
   categories_prepare() %>% 
   mutate(
-    category = stringr::str_trunc(category, 40))
-
+   category = recode(category,
+                           "Project genesis" = "Project genesis/ first thoughts/ idea creation"))
 ## piechart plot
-stage_positive %>% 
-  piechart_plot()
+stage_positive_piechart <- stage_positive %>% 
+  piechart_plot(legend_name = "Research stage") +
+  labs(title = "Positive emotions more dominant")
 
 ```
 
+## Combining the piecharts
+```{r}
+stage_piecharts <- (stage_negative_piechart + stage_positive_piechart) & 
+  plot_layout(guides = "collect") & 
+  theme(legend.position = "bottom")
+
+stage_piecharts +
+  plot_annotation(title = "Overall intensity of emotions within the different research stages")
+```
 
 # --------------------------------------------------------------------------------------------------------
 # PART 5: Distributions of positive-negative emotions by research stage
