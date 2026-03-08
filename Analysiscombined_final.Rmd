@@ -104,8 +104,8 @@ data_recoded = data_clean %>%
   mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
   mutate(NAcount = rowSums(is.na(across(interest:anger)))) %>%
   mutate(NAcountpos = rowSums(is.na(across(interest:compassion)))) %>% 
-  mutate(NAcountneg = rowSums(is.na(across(sadness:anger)))) %>% 
-  mutate(across(sadness:anger, ~ 8 - .x))
+  mutate(NAcountneg = rowSums(is.na(across(sadness:anger))))
+
 # Updated missing data handling, this is not needed as na.strings in read.csv handles this across the data
 # %>% 
 #   mutate(across(ResponseId:Q22_6_TEXT, ~ na_if(.x, ""))) %>% 
@@ -1027,12 +1027,13 @@ combined_gender
 ```{r}
 research_stage_emotions = data_recoded %>% 
   select(research_stage, all_of(feeling_cols)) %>% 
-  filter(!(research_stage == ""))
+  filter(!(research_stage == "")) %>% 
+    mutate(across(sadness:anger, ~ 8 - .x))
 research_stage_emotions_positive = research_stage_emotions %>% 
   select(research_stage, all_of(positive_feelings))
 research_stage_emotions_negative = research_stage_emotions %>% 
   select(research_stage, all_of(negative_feelings)) %>% 
-  mutate(across(sadness:anger, ~ 8 - .x))
+    mutate(across(sadness:anger, ~ 8 - .x))
 
 research_stage_na = Nacount(data_recoded, research_stage) %>% 
   filter(!(is.na(research_stage)))
@@ -1136,7 +1137,8 @@ overall emotion visualization area
 ```{r}
 area_emotions = data_recoded %>% 
   select(area, all_of(feeling_cols)) %>% 
-  filter(!(area == ""))
+  filter(!(area == "")) %>% 
+  mutate(across(sadness:anger, ~ 8 - .x))
 area_emotions_positive = area_emotions %>%
 select(area, all_of(positive_feelings))
 area_emotions_negative = area_emotions %>% 
@@ -1161,6 +1163,35 @@ area_emotions_mean_positive = mean_function(area_emotions_positive, area)
 area_emotions_negative = emotion_function(area_emotions_negative, area)
 
 area_emotions_mean_negative = mean_function(area_emotions_negative, area)
+
+area_pos = overall_emotion_plot_valence(
+  area_emotions_mean_positive,
+  area,
+  mean_emotion,
+  color_low = "orange",
+  color_high = "red",
+  "Positive Emotions"
+)
+
+area_neg = overall_emotion_plot_valence(
+  area_emotions_mean_negative,
+  area,
+  mean_emotion,
+  color_low = "lightblue",
+  color_high = "blue",
+  "Negative Emotions"
+)
+
+
+overall_emotion_plot(
+  area_emotions_mean,
+  area,
+  mean_emotion,
+  "Overall Emotional Landscape by Position"
+)
+
+area_combined = area_pos + area_neg
+area_combined
 ```
 
 
@@ -1260,7 +1291,6 @@ country_emotions = data_recoded %>%
 mutate(
   mutate(across(all_of(feeling_cols),
                 ~ as.numeric(as.character(.x))))) %>% 
-    mutate(across(sadness:anger,~ 8 - .x)) %>% 
   mutate(mean_feeling = rowMeans(across(interest:anger), na.rm = TRUE))
 
 country_emotions = country_emotions %>% 
@@ -1347,95 +1377,86 @@ country_emotions_clean = country_emotions_clean %>%
 country_emotions_clean_pos = country_emotions_clean %>% 
   select(ResponseId, country, continent, all_of(positive_feelings)) %>% 
   mutate(mean_feeling = rowMeans(across(interest:compassion), na.rm = TRUE))
+
 country_emotions_clean_neg = country_emotions_clean %>% 
   select(ResponseId, country, continent, all_of(negative_feelings)) %>% 
   mutate(mean_feeling = rowMeans(across(sadness:anger), na.rm = TRUE)) %>% 
-  mutate(across(sadness:anger, ~ 8 - .x)) %>% 
   mutate(NAcount = rowSums(is.na(across(sadness:anger)))) %>% 
+   mutate(across(sadness:anger, ~ 8 - .x)) %>% 
   filter(!(NAcount > 5)) %>% 
   mutate(mean_feeling = rowMeans(across(sadness:anger), na.rm = TRUE))
 ```
+#For loop attempt
 
+1. OVerall emotional landscape region-wise
 ```{r}
-#Europe
-europe_emotions_mean = continent_emotions_mean_function(country_emotions_clean, "Europe")
-europe_emotions_mean_pos = continent_emotions_mean_function_pos(country_emotions_clean_pos,"Europe")
-europe_emotions_mean_neg = continent_emotions_mean_function_neg(country_emotions_clean_neg, "Europe")
+continents <- c("Europe", "Africa", "Asia", "North America", "South America/ Central America", "Oceania")
 
-continent_plot_function(europe_emotions_mean, "Overall Emotional Landscape - Europe")
-europe_pos = continent_plot_function_valence(europe_emotions_mean_pos, color_low = "orange", color_high = "red",  "Positive Emotions")
-europe_neg = continent_plot_function_valence(europe_emotions_mean_neg, color_low = "lightblue", color_high = "blue", "Negative Emotions")
-europe_combined = europe_pos + europe_neg
-europe_combined
+
+continent_results <- list()
+
+for (cont in continents) {
+  continent_results[[cont]] <- continent_emotions_mean_function(country_emotions_clean, cont)
+}
+
+continent_plots <- list()
+
+for (cont in continents) {
+  
+  temp_data = continent_emotions_mean_function(country_emotions_clean, cont)
+  
+  continent_plots[[cont]] = continent_plot_function(
+    temp_data,
+    title_text = paste("Overall emotional landscape in", cont))}
+
+
+continent_results
+continent_plots
 ```
-
+2. Intensity of positive emotions region-wise
 ```{r}
-#Asia
-asia_emotions_mean = continent_emotions_mean_function(country_emotions_clean, "Asia")
-asia_emotions_mean_pos = continent_emotions_mean_function_pos(country_emotions_clean_pos, "Asia")
-asia_emotions_mean_neg = continent_emotions_mean_function_neg(country_emotions_clean_neg, "Asia")
+#Positive
+continent_results_pos = list()
+continent_plots_pos = list()
 
-continent_plot_function(asia_emotions_mean, "Overall Emotional Landscape - Asia")
-asia_pos = continent_plot_function_valence(asia_emotions_mean_pos, color_low = "orange", color_high = "red", "Positive Emotions")
-asia_neg = continent_plot_function_valence(asia_emotions_mean_neg, color_low = "lightblue", color_high = "blue", "Negative Emotions")
-asia_combined = asia_pos + asia_neg
-asia_combined
+for (cont in continents) {
+  
+  temp_data = continent_emotions_mean_function_pos(country_emotions_clean_pos, cont)
+  
+  continent_results_pos[[cont]] = temp_data
+  
+  continent_plots_pos[[cont]] = continent_plot_function_valence(
+    temp_data,color_low = "orange",color_high = "red",
+    title_text = paste("Positive Emotions in", cont))}
+continent_plots_pos
+
 ```
-
+3. Intensity of negative emotions region-wise
 ```{r}
-#Africa
-africa_emotions_mean = continent_emotions_mean_function(country_emotions_clean, "Africa")
-africa_emotions_mean_pos = continent_emotions_mean_function_pos(country_emotions_clean_pos, "Africa")
-africa_emotions_mean_neg = continent_emotions_mean_function_neg(country_emotions_clean_neg, "Africa")
+#Negative
+continent_results_neg = list()
+continent_plots_neg = list()
 
-continent_plot_function(africa_emotions_mean, "Overall Emotional Landscape - Africa")
-africa_pos = continent_plot_function_valence(africa_emotions_mean_pos, color_low = "orange", color_high = "red", "Positive Emotions")
-africa_neg = continent_plot_function_valence(africa_emotions_mean_neg, color_low = "lightblue", color_high = "blue", "Negative Emotions")
-africa_combined = africa_pos + africa_neg
-africa_combined
+for (cont in continents) {
+  
+  temp_data = continent_emotions_mean_function_neg(country_emotions_clean_neg, cont)
+  
+  continent_results_neg[[cont]] = temp_data
+  
+  continent_plots_neg[[cont]] = continent_plot_function_valence(
+    temp_data,color_low = "lightblue",color_high = "blue",
+    title_text = paste("Negative Emotions in", cont))}
+
+continent_results_neg
+continent_plots_neg
 ```
-
-
+4. Combined plots
 ```{r}
-#North America
-northamerica_emotions_mean = continent_emotions_mean_function(country_emotions_clean, "North America")
-northamerica_emotions_mean_pos = continent_emotions_mean_function_pos(country_emotions_clean_pos, "North America")
-northamerica_emotions_mean_neg = continent_emotions_mean_function_neg(country_emotions_clean_neg, "North America")
+combined_plots = Map(`+`, continent_plots_pos, continent_plots_neg) #The map goes through the two vectors in parallel --> given they contain plots, the combined plots are this easy to create
 
-continent_plot_function(northamerica_emotions_mean, "Overall Emotional Landscape - NorthAmerica")
-northamerica_pos = continent_plot_function_valence(northamerica_emotions_mean_pos, color_low = "orange", color_high = "red", "Positive Emotions")
-northamerica_neg = continent_plot_function_valence(northamerica_emotions_mean_neg, color_low = "lightblue", color_high = "blue", "Negative Emotions")
-northamerica_combined = northamerica_pos + northamerica_neg
-northamerica_combined
+combined_plots
 ```
-
-```{r}
-#South America/ Central America
-southamerica_emotions_mean = continent_emotions_mean_function(country_emotions_clean, "South America/ Central America")
-southamerica_emotions_mean_pos = continent_emotions_mean_function_pos(country_emotions_clean_pos, "South America/ Central America")
-southamerica_emotions_mean_neg = continent_emotions_mean_function_neg(country_emotions_clean_neg, "South America/ Central America")
-
-continent_plot_function(southamerica_emotions_mean, "Overall Emotional Landscape - South America/Central America")
-southamerica_pos = continent_plot_function_valence(southamerica_emotions_mean_pos, color_low = "orange", color_high = "red", "Positive Emotions")
-southamerica_neg = continent_plot_function_valence(southamerica_emotions_mean_neg, color_low = "lightblue", color_high = "blue", "Negative Emotions")
-southamerica_combined = southamerica_pos + southamerica_neg
-southamerica_combined
-```
-
-```{r}
-#Oceania
-oceania_emotions_mean = continent_emotions_mean_function(country_emotions_clean,"Oceania")
-oceania_emotions_mean_pos = continent_emotions_mean_function_pos(country_emotions_clean_pos,"Oceania")
-oceania_emotions_mean_neg = continent_emotions_mean_function_neg(country_emotions_clean_neg,"Oceania")
-
-continent_plot_function(oceania_emotions_mean,"Overall Emotional Landscape - Oceania")
-oceania_pos = continent_plot_function_valence(oceania_emotions_mean_pos,color_low = "orange",color_high = "red","Positive Emotions")
-oceania_neg = continent_plot_function_valence(oceania_emotions_mean_neg,color_low = "lightblue",color_high = "blue","Negative Emotions")
-oceania_combined = oceania_pos + oceania_neg
-oceania_combined
-view(oceania_emotions_mean_neg)
-```
-
+5. Countries with the top 10 most respondents
 ```{r}
 #based on frequency
 top10_countries <- country_emotions_clean %>% 
@@ -1478,6 +1499,22 @@ country_11_groups %>%
     legend.position = "none")+
   theme(axis.ticks.y = element_blank())
 ```
+6.Country mapping with at least 10 respondents from the given country 
+```{r}
+country_emotions_min10 = country_emotions_clean %>% 
+  mutate(country = factor(country)) %>% 
+  group_by(country) %>% 
+  filter(n() >= 10) %>% 
+  ungroup() 
+
+min10_emotions = emotion_function(country_emotions_min10, country)
+min10_mean = mean_function(min10_emotions, country)
+
+min10_plot = overall_emotion_plot(min10_mean, country, mean_emotion, "Overall Emotional Landscape in Countries with at least 10 Respondents")
+min10_plot
+```
+
+
 
 ```{r}
 df_feeling_general = data_recoded %>% 
