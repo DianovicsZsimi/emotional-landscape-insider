@@ -83,14 +83,21 @@ categories_prepare = function(df) {
 }
 
 ## piechart plot
-piechart_plot = function(df) {
+piechart_plot = function(df, legend_name) {
   ggplot(df, aes(x = "", y = n, fill = category)) +
     geom_bar(stat = "identity", width = 1) +
     coord_polar("y", start = 0) +
     geom_text(aes(label = paste0(round(perc), "%")), 
-              position = position_stack(vjust = 0.5), 
+              position = position_stack(vjust = 0.25), 
               size = 3.5) +
-    scale_fill_manual(values = c("#ff6600", "#ffcc00", "#99cc00", "#009933", "#66ccff", "#6699ff", "#9966ff", "#ff66cc", "#ffccff"))
+    scale_fill_manual(
+      name = legend_name, 
+      values = c("#ff6600", "#ffcc00", "#99cc00", "#009933", "#66ccff", "#6699ff", "#9966ff", "#ff66cc", "#ffccff")) +
+    theme(
+      legend.text = element_text(size = 8),
+      legend.title = element_text(size = 9),
+      legend.key.size = unit(0.4, "cm")
+    )
 }
 
 ## classifying the columns
@@ -136,9 +143,10 @@ pyramid_plot = function(df) {
   df %>% 
     filter(!(gender %in% c("Non-binary / third gender / gender non-conforming", NA, "Prefer not to say"))) %>% 
     age_pyramid(age_group = age_group, split_by = gender) +
-    labs(x = "Age group", 
-         y = "Number of people", 
-         title = "Age distribution chart")
+      labs(x = "Age group", 
+          y = "Number of people", 
+          title = "Age distribution chart")
+  
 }
 
 # 4. -- ggsave function -- 
