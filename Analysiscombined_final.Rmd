@@ -106,11 +106,108 @@ data_recoded = data_clean %>%
   mutate(NAcountpos = rowSums(is.na(across(interest:compassion)))) %>% 
   mutate(NAcountneg = rowSums(is.na(across(sadness:anger))))
 
-# Updated missing data handling, this is not needed as na.strings in read.csv handles this across the data
-# %>% 
-#   mutate(across(ResponseId:Q22_6_TEXT, ~ na_if(.x, ""))) %>% 
-#   mutate(cause_stage = if_else(cause_stage == "", NA, cause_stage)) %>% 
-#   mutate(across(cause_general:country_other, ~ na_if(.x, ""))) 
+
+country_emotions = data_recoded %>%  
+  select(ResponseId, country, country_other, all_of(feeling_cols)) %>% 
+  mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
+mutate(
+  mutate(across(all_of(feeling_cols),
+                ~ as.numeric(as.character(.x))))) %>% 
+  mutate(mean_feeling = rowMeans(across(interest:anger), na.rm = TRUE))
+
+country_emotions = country_emotions %>% 
+  pivot_longer(cols = c(country, country_other), 
+               names_to = "group", 
+               values_to = "country")
+country_emotions = country_emotions %>% 
+  filter(!(country == "")) %>% 
+  filter(!(ResponseId == "R_7YyTHrAj3Gc1fHP")) 
+
+
+target_id = "R_7gbaE2EDWdQ3wOo"
+target_text = "Also Germany Australia and recently China"
+
+
+split_row = country_emotions %>%
+  filter(ResponseId == target_id, country == target_text) %>%
+  mutate(
+    country = str_replace_all(country, "(?<=[a-z])(?=[A-Z])", " "),
+    country = str_remove(country, "^Also\\s+"),
+    country = str_remove(country, "\\s+ and recently\\s+"),
+    country = str_squish(country),
+    country = str_replace_all(country, "\\s+", ",")) %>%
+  separate_rows(country, sep = ",")
+
+rest <- country_emotions %>%
+  filter(!(ResponseId == target_id & country == target_text))
+
+country_emotions_clean <- bind_rows(split_row, rest)
+
+country_emotions_clean = country_emotions_clean %>% 
+  mutate(country = if_else(country == "Did my PhD in the US graduated in August and moved to Australia for postdoc", "United States of America", country)) %>% 
+  mutate(country = if_else(country == "i work from home from italy", "Italy", country)) %>% 
+  mutate(country = if_else(country == "Israel I am doing a collaboration in italy", "Israel", country)) %>% #because they indicated Italy in the "country" option
+  mutate(country = if_else(country == "Actually Im from Palestine unfortunatley there is no mention for state of Palestine", "Palestine", country)) %>% #???
+  mutate(country = if_else(country == "China ", "China", country)) %>% 
+  mutate(country = if_else(country == "Makedonija", "Northern Macedonia", country)) %>% 
+  mutate(country = if_else(country == "I am from Canada and have done research there", "Canada", country)) %>% 
+  mutate(country = if_else(country == "south africa", "South Africa", country)) %>% 
+  mutate(country = if_else(country == "England", "United Kingdom of Great Britain and Northern Ireland", country)) %>% 
+  filter(!(country == "Africa")) %>% 
+mutate(country = if_else(country == "N Macedonia", "North Macedonia", country)) %>% 
+  filter(!(country %in% c("and","recently"))) %>% 
+  mutate(country = if_else(country == "United States of America", "USA", country)) %>% 
+  mutate(country = if_else(country == "United Kingdom of Great Britain and Northern Ireland", "UK", country))
+
+country_emotions_clean <- bind_rows(
+  country_emotions_clean %>%
+    filter(ResponseId == "R_2GQ90ZxUHZ6JyFB", country == 	
+             "Burkina Faso USA") %>%
+    mutate(country = str_replace(country, "\\s+USA\\b", ",USA")) %>%  # insert delimiter before USA
+    separate_rows(country, sep = ","),
+  country_emotions_clean%>%
+    filter(!(ResponseId == "R_2GQ90ZxUHZ6JyFB"  & country == "Burkina Faso USA")))
+
+
+
+country_emotions_clean <- country_emotions_clean %>%
+  mutate(
+    continent = case_when(
+      country %in% c("Algeria", "Burkina Faso", "Egypt", 
+                     "Mali", "South Africa", "Sudan") ~ "Africa",
+      country %in% c("Argentina", "Brazil", "Chile", "Costa Rica", 
+                     "Colombia") ~ "South America/ Central America",
+      country %in% c("Canada", "Mexico", 
+                     "USA") ~ "North America",
+      country %in% c("Austria", "Belgium", "Croatia", "Czech Republic",
+                     "Denmark", "Finland", "France", "Germany", "Greece",
+                     "Hungary", "Iceland", "Ireland", "Italy", "Lithuania",
+                     "Netherlands", "North Macedonia", "Norway", "Poland",
+                     "Portugal", "Romania", "Serbia", "Slovenia", "Spain",
+                     "Sweden", "Switzerland",
+                     "UK") ~ "Europe",
+      country %in% c("China", "Hong Kong (S.A.R.)", "India", "Iran", "Iraq",
+                     "Israel", "Japan", "Lebanon", "Malaysia", "Pakistan",
+                     "Palestine", "Philippines", "Saudi Arabia", "Singapore",
+                     "South Korea", "Sri Lanka", "Taiwan", "Thailand") ~ "Asia",
+      country == "Turkey" ~ "Europe", 
+      country %in% c("Australia", "New Zealand") ~ "Oceania", TRUE ~ NA_character_))
+
+
+country_emotions_clean = country_emotions_clean %>% 
+  mutate(country = factor(country)) %>% 
+   mutate(across(sadness:anger, ~ 8 - .x))
+country_emotions_clean_pos = country_emotions_clean %>% 
+  select(ResponseId, country, continent, all_of(positive_feelings)) %>% 
+  mutate(mean_feeling = rowMeans(across(interest:compassion), na.rm = TRUE)) 
+
+country_emotions_clean_neg = country_emotions_clean %>% 
+  select(ResponseId, country, continent, all_of(negative_feelings)) %>% 
+  mutate(mean_feeling = rowMeans(across(sadness:anger), na.rm = TRUE)) %>% 
+  mutate(NAcount = rowSums(is.na(across(sadness:anger)))) %>% 
+   mutate(across(sadness:anger, ~ 8 - .x)) %>% 
+  filter(!(NAcount > 5)) %>% 
+  mutate(mean_feeling = rowMeans(across(sadness:anger), na.rm = TRUE))
 ```
 
 
@@ -782,7 +879,8 @@ piechart_position_negative <- position_negative %>%
   piechart_plot(legend_name = "Position") +
   labs(
     title = "Negative emotions more dominant"
-  )
+  ) +
+  theme(legend.position = "bottom", legend.justification = "left")
 
 piechart_position_negative
 ```
@@ -794,17 +892,16 @@ position_positive <- positive_means %>%
   categories_prepare()
 
 ## pie chart for the distribution of positions
-piechart_position_positive <- position_positive %>% 
-  piechart_plot(legend_name = "Position") +
-  labs(title = "Positive emotions more dominant")
+piechart_position_positive <- position_positive %>%
+  piechart_plot(legend_name = "position")+
+  labs(title = "Positive emotions more dominant")+
+  theme(legend.position = "none")
 
 ```
 
 ## Combine two piecharts 
 ```{r}
-piechart_position <- (piechart_position_negative + piechart_position_positive) & 
-  plot_layout(guides = "collect") & 
-  theme(legend.position = "bottom")
+piechart_position <- (piechart_position_negative + piechart_position_positive)
 
 
 piechart_position +
@@ -821,7 +918,9 @@ work_negative <- negative_means %>%
 ## pie chart for the distribution of the categories
 work_negative_piechart <- work_negative %>% 
   piechart_plot(legend_name = "Category of work") +
-  labs(title = "Negative emotions more dominant")
+  labs(title = "Negative emotions more dominant")+
+   theme(legend.position = "bottom", legend.justification = "left")
+  
 ```
 ## positive > negative -> create piechart, prepare data
 ```{r}
@@ -832,13 +931,12 @@ work_positive <- positive_means %>%
 ## pie chart for the distribution of the categories
 work_positive_piechart <- work_positive %>% 
   piechart_plot(legend_name = "Category of work") + 
-  labs(title = "Positive emotions more dominant")
+  labs(title = "Positive emotions more dominant")+
+  theme(legend.position = "none")
 ```
 ## Combine two piecharts
 ```{r}
-work_piecharts <- (work_negative_piechart + work_positive_piechart) & 
-  plot_layout(guides = "collect") & 
-  theme(legend.position = "bottom")
+work_piecharts <- (work_negative_piechart + work_positive_piechart)
 
 work_piecharts +
   plot_annotation(title = "Overall intensity of emotions within the different categories of work")
@@ -1352,109 +1450,6 @@ combined_emotions <- bind_rows(
 
 Overall emotion visualization by country 
 
-#Data cleaning
-```{r}
-country_emotions = data_recoded %>%  
-  select(ResponseId, country, country_other, all_of(feeling_cols)) %>% 
-  mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
-mutate(
-  mutate(across(all_of(feeling_cols),
-                ~ as.numeric(as.character(.x))))) %>% 
-  mutate(mean_feeling = rowMeans(across(interest:anger), na.rm = TRUE))
-
-country_emotions = country_emotions %>% 
-  pivot_longer(cols = c(country, country_other), 
-               names_to = "group", 
-               values_to = "country")
-country_emotions = country_emotions %>% 
-  filter(!(country == "")) %>% 
-  filter(!(ResponseId == "R_7YyTHrAj3Gc1fHP")) 
-
-
-target_id = "R_7gbaE2EDWdQ3wOo"
-target_text = "Also Germany Australia and recently China"
-
-
-split_row = country_emotions %>%
-  filter(ResponseId == target_id, country == target_text) %>%
-  mutate(
-    country = str_replace_all(country, "(?<=[a-z])(?=[A-Z])", " "),
-    country = str_remove(country, "^Also\\s+"),
-    country = str_remove(country, "\\s+ and recently\\s+"),
-    country = str_squish(country),
-    country = str_replace_all(country, "\\s+", ",")) %>%
-  separate_rows(country, sep = ",")
-
-rest <- country_emotions %>%
-  filter(!(ResponseId == target_id & country == target_text))
-
-country_emotions_clean <- bind_rows(split_row, rest)
-
-country_emotions_clean = country_emotions_clean %>% 
-  mutate(country = if_else(country == "Did my PhD in the US graduated in August and moved to Australia for postdoc", "United States of America", country)) %>% 
-  mutate(country = if_else(country == "i work from home from italy", "Italy", country)) %>% 
-  mutate(country = if_else(country == "Israel I am doing a collaboration in italy", "Israel", country)) %>% #because they indicated Italy in the "country" option
-  mutate(country = if_else(country == "Actually Im from Palestine unfortunatley there is no mention for state of Palestine", "Palestine", country)) %>% #???
-  mutate(country = if_else(country == "China ", "China", country)) %>% 
-  mutate(country = if_else(country == "Makedonija", "Northern Macedonia", country)) %>% 
-  mutate(country = if_else(country == "I am from Canada and have done research there", "Canada", country)) %>% 
-  mutate(country = if_else(country == "south africa", "South Africa", country)) %>% 
-  mutate(country = if_else(country == "England", "United Kingdom of Great Britain and Northern Ireland", country)) %>% 
-  filter(!(country == "Africa")) %>% 
-mutate(country = if_else(country == "N Macedonia", "North Macedonia", country)) %>% 
-  filter(!(country %in% c("and","recently"))) %>% 
-  mutate(country = if_else(country == "United States of America", "USA", country)) %>% 
-  mutate(country = if_else(country == "United Kingdom of Great Britain and Northern Ireland", "UK", country))
-
-country_emotions_clean <- bind_rows(
-  country_emotions_clean %>%
-    filter(ResponseId == "R_2GQ90ZxUHZ6JyFB", country == 	
-             "Burkina Faso USA") %>%
-    mutate(country = str_replace(country, "\\s+USA\\b", ",USA")) %>%  # insert delimiter before USA
-    separate_rows(country, sep = ","),
-  country_emotions_clean%>%
-    filter(!(ResponseId == "R_2GQ90ZxUHZ6JyFB"  & country == "Burkina Faso USA")))
-
-
-
-country_emotions_clean <- country_emotions_clean %>%
-  mutate(
-    continent = case_when(
-      country %in% c("Algeria", "Burkina Faso", "Egypt", 
-                     "Mali", "South Africa", "Sudan") ~ "Africa",
-      country %in% c("Argentina", "Brazil", "Chile", "Costa Rica", 
-                     "Colombia") ~ "South America/ Central America",
-      country %in% c("Canada", "Mexico", 
-                     "USA") ~ "North America",
-      country %in% c("Austria", "Belgium", "Croatia", "Czech Republic",
-                     "Denmark", "Finland", "France", "Germany", "Greece",
-                     "Hungary", "Iceland", "Ireland", "Italy", "Lithuania",
-                     "Netherlands", "North Macedonia", "Norway", "Poland",
-                     "Portugal", "Romania", "Serbia", "Slovenia", "Spain",
-                     "Sweden", "Switzerland",
-                     "UK") ~ "Europe",
-      country %in% c("China", "Hong Kong (S.A.R.)", "India", "Iran", "Iraq",
-                     "Israel", "Japan", "Lebanon", "Malaysia", "Pakistan",
-                     "Palestine", "Philippines", "Saudi Arabia", "Singapore",
-                     "South Korea", "Sri Lanka", "Taiwan", "Thailand") ~ "Asia",
-      country == "Turkey" ~ "Europe", 
-      country %in% c("Australia", "New Zealand") ~ "Oceania", TRUE ~ NA_character_))
-
-
-country_emotions_clean = country_emotions_clean %>% 
-  mutate(country = factor(country))
-country_emotions_clean_pos = country_emotions_clean %>% 
-  select(ResponseId, country, continent, all_of(positive_feelings)) %>% 
-  mutate(mean_feeling = rowMeans(across(interest:compassion), na.rm = TRUE))
-
-country_emotions_clean_neg = country_emotions_clean %>% 
-  select(ResponseId, country, continent, all_of(negative_feelings)) %>% 
-  mutate(mean_feeling = rowMeans(across(sadness:anger), na.rm = TRUE)) %>% 
-  mutate(NAcount = rowSums(is.na(across(sadness:anger)))) %>% 
-   mutate(across(sadness:anger, ~ 8 - .x)) %>% 
-  filter(!(NAcount > 5)) %>% 
-  mutate(mean_feeling = rowMeans(across(sadness:anger), na.rm = TRUE))
-```
 #For loop attempt
 
 1. OVerall emotional landscape region-wise
