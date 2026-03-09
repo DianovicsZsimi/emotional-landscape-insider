@@ -6,6 +6,7 @@ output: html_document
 ---
 
 #load libraries
+---------------
 ```{r}
 # Updated library loading with checks for installation
 
@@ -39,7 +40,8 @@ library(maps)
 ```
 
 
-#data formatting, setup
+1. Data cleaning, data wrangling
+--------------------------------
 ```{r}
 # Updated data loading with checks for missing data handling
 source("functionscombined_new.R")
@@ -112,8 +114,7 @@ country_emotions = data_recoded %>%
   mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
 mutate(
   mutate(across(all_of(feeling_cols),
-                ~ as.numeric(as.character(.x))))) %>% 
-  mutate(mean_feeling = rowMeans(across(interest:anger), na.rm = TRUE))
+                ~ as.numeric(as.character(.x)))))
 
 country_emotions = country_emotions %>% 
   pivot_longer(cols = c(country, country_other), 
@@ -196,10 +197,16 @@ country_emotions_clean <- country_emotions_clean %>%
 
 country_emotions_clean = country_emotions_clean %>% 
   mutate(country = factor(country)) %>% 
-   mutate(across(sadness:anger, ~ 8 - .x))
+   mutate(across(sadness:anger, ~ 8 - .x)) %>% 
+   mutate(mean_feeling = rowMeans(across(interest:compassion), na.rm = TRUE))
+
+
+
 country_emotions_clean_pos = country_emotions_clean %>% 
   select(ResponseId, country, continent, all_of(positive_feelings)) %>% 
   mutate(mean_feeling = rowMeans(across(interest:compassion), na.rm = TRUE)) 
+
+
 
 country_emotions_clean_neg = country_emotions_clean %>% 
   select(ResponseId, country, continent, all_of(negative_feelings)) %>% 
@@ -210,11 +217,8 @@ country_emotions_clean_neg = country_emotions_clean %>%
   mutate(mean_feeling = rowMeans(across(sadness:anger), na.rm = TRUE))
 ```
 
-
-# ========================================================================================================
-# Barbi
-# ========================================================================================================
-
+2. Study description, descriptives
+----------------------------------
 ```{r}
 # updated dataset to match the correct one
 plot_distribution_categorical(data_recoded, "Status", "Questionnaire Completion")
@@ -335,6 +339,8 @@ ggplot(df_dropout_counts, aes(x = Progress, y = n)) +
   )
 
 ```
+
+
 ```{r}
 #country distribution
 
@@ -381,11 +387,40 @@ df_country_ranked <- df_country_map %>%
 df_country_ranked
 ```
 
-# ========================================================================================================
+2.1 SD in emotions
+```{r}
+## flag where SD of emotions are > 1 
+sd_flag <- data_recoded %>% 
+  select(
+    -Progress, -Duration, -Finished, -dismiss_1, -Q22, -Q22_6_TEXT 
+  ) %>% 
+  mutate(across("interest":"anger", as.numeric),
+         mean_landscape = rowMeans(across("interest":"anger"), na.rm = T),
+         sd_landscape = apply(across("interest":"anger"), 1, sd, na.rm = T)) %>% 
+  filter(
+    !(is.na(mean_landscape)),
+    !(is.na(sd_landscape)), 
+    !(is.nan(mean_landscape))
+  )
 
-# Bogi
-# ========================================================================================================
+## sd smaller than 0.9 -> emotional landscape lacks dimension
+small_sd <- sd_flag %>% 
+  filter(
+    sd_landscape < 0.9
+  )
 
+## exporative: greater sd, potential reasons??
+great_sd <- sd_flag %>% 
+  filter(
+    sd_landscape > 2.5
+  )
+```
+
+
+3. Research stage
+------------------
+
+3.1 - Intensity of specific emotions across research stages - version A
 # For loop solution
 ```{r}
 color_vector = c(
@@ -438,128 +473,86 @@ for (stage in unique(na.omit(data_recoded$research_stage))) {
   
 ```
 
+3.1- Intensity of specific emotions across research stages - version B
 
-# PART 1: Emotions By Research Stage
-## 1. Emotions during the Data Analysis stage
-## 1.1 Emotions on the participant-level
 ```{r}
-analysis_data <- data_recoded %>% 
-  filter(
-    research_stage == "Data analysis"
-  ) %>%
-  analysis_select()
+for (feeling in feeling_cols) {
+  feeling_data <- data_recoded %>%
+    select(all_of(c(feeling, "research_stage"))) %>%
+    filter(!is.na(.data[[feeling]])) %>%
+    group_by(research_stage)}
 
-# pivot_longer for the heatmap
-analysis_heatmap <- analysis_data %>% 
-  longer_heatmap()
 
-# heatmap by participant - Data Analysis stage
-analysis_heatmap %>% 
-  ggplot(aes(x = emotion, y = ResponseId, fill = intensity)) +
-  geom_tile(
-    inherit.aes = T,
-    position = position_identity(), na.rm = T) +
-  scale_fill_gradient(
-      low = "white", 
-      high = "#02452B", 
-      limits = c(0, 7)) +
-  labs(
-      title = "Intensity of emotions on the level of participants in the Data Analysis stage", 
-      tag = "1.1.") +
-    theme(
-      axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
-      axis.text.y = element_blank())
+plots_specfeeling <- list()
 
-  ## heatmap_plot(analysis_heatmap)
-```
+for (feeling in feeling_cols) {
 
-## 1.2. Overall intensity of emotions
-```{r}
-analysis_overall <- analysis_heatmap %>% 
-  sum_analysis() ## summarising emotional intensity on every emotion
+  feeling_distribution <- data_recoded %>% 
+    select(all_of(c(feeling, "research_stage"))) %>% 
+    filter(!is.na(.data[[feeling]])) %>%
+    group_by(research_stage) %>%
+    mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
+    mutate(
+      research_stage = stringr::str_trunc(research_stage, 30)
+    )
 
-analysis_overall %>% 
-  plot_overall() +
+  plots_specfeeling[[feeling]] <- feeling_distribution %>% 
+    ggplot(aes(x = research_stage, y = .data[[feeling]])) +
+    geom_col(fill = "#B5E6D0", na.rm = TRUE) +
     labs(
-      title = "Overall intensity of emotions in the Data Analysis stage", 
-      tag = "1.2.")
+      title = paste("Intensity of", feeling, "through the research stages")) +
+    theme(
+      axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)
+    )
+}
+
+plots_specfeeling
 
 ```
 
-## 2. Emotions during the Preparations stage
-## 2.1. Intensity of emotions on the participant-level
+3.1 - Intensity of specific emotions across research stages - version C
+
 ```{r}
-preparations_data <- data_recoded %>% 
-  filter(
-    research_stage == "Preparations"
+all_distribution <- data_recoded %>% 
+  select(
+    research_stage, interest:anger
   ) %>% 
-  analysis_select() ## selecting relevant columns
-
-# pivot longer - for the heatmap of participant-level emotions
-preparations_heatmap <- preparations_data %>% 
-  longer_heatmap()
-
-# heatmap by participant
-preparations_heatmap %>%
-  heatmap_plot() + 
-   scale_fill_gradient(
-      low = "white", 
-      high = "#2b4a78", 
-      limits = c(0, 7)) + 
-  labs(
-      title = "Intensity of emotions on the level of participants in the Preparations stage", 
-      tag = "2.1.")
-```
-
-## 2.2. Overall intensity of emotions in the preparations stage
-```{r}
-preparations_overall <- preparations_heatmap %>% 
-  sum_analysis() ## summarising emotional intensity on every emotion
-
-preparations_overall %>% 
-  plot_overall() + 
-  labs(
-      title = "Overall intensity of emotions in the Preparations stage", 
-      tag = "2.2.")
-```
-
-## 3. Emotions while Waiting for journal's response and revisions
-## 3.1. Participant-level intensity of emotions
-```{r}
-waiting_data <- data_recoded %>% 
-  filter(
-    research_stage == "Waiting"
+  filter(!(is.na(research_stage))) %>% 
+  mutate(
+    research_stage = stringr::str_trunc(research_stage, 20)) %>% 
+  group_by(research_stage) %>% 
+  summarise(
+    across(
+      all_of(feeling_cols), 
+      ~ round(mean(.x[.x != 0], na.rm = T), 3)
+    )
   ) %>% 
-  analysis_select()
+  pivot_longer(
+    cols = all_of(feeling_cols),
+    names_to = "emotion", 
+    values_to = "intensity"
+  ) %>% 
+  mutate(
+    emotion = factor(emotion, levels = feeling_cols)
+  )
 
-# pivot longer - for the heatmap of participant-level emotions
-waiting_heatmap <- waiting_data %>% 
-  longer_heatmap()
+all_distribution %>% 
+  ggplot(aes(x = research_stage, y = intensity)) +
+  geom_col(fill = "#84CDF0", na.rm = T
+    ) +
+    labs(
+      title = "Intensity of all emotions through the research stages") +
+    theme(
+      axis.text.x = element_text(angle = 
+                                   45, vjust = 1, hjust = 1, size = 6)) +
+  facet_wrap(~ emotion, nrow = 3) 
 
-# heatmap by participant
-waiting_heatmap %>% 
-  heatmap_plot() + 
-   scale_fill_gradient(
-      low = "white", 
-      high = "#9D3B06", 
-      limits = c(0, 7)) + 
-  labs(
-      title = "Intensity of emotions on the level of participants in the Waiting stage", 
-      tag = "3.1.")
+
 ```
 
-## 3.2. Overall intensity of emotions in the preparations stage
-```{r}
-waiting_overall <- waiting_heatmap %>% 
-  sum_analysis() ## summarising intensity on every emotion
 
-waiting_overall %>% 
-  plot_overall() + 
-  labs(
-      title = "Overall intensity of emotions in the Waiting stage", 
-      tag = "3.2.")
-```
-## 4. Post-project stage 
+3.2. Post-project stage
+
 ```{r}
 post_project <- data_recoded %>% 
   filter(
@@ -622,43 +615,7 @@ post_project3_long %>%
       tag = "4.3.")
 ```
 
-## 5. Report writing stage - heatmap and overall intensity of emotions
-```{r}
-report_writing <- data_recoded %>% 
-  filter(
-    research_stage == "Report writing"
-  ) %>% 
-  select(-dismiss_1, -Q22, -Q22_6_TEXT) 
-
-# mean intensity of emotions
-report_writing_long <- report_writing %>% 
-  longer_heatmap() %>% 
-  sum_analysis()
-
-# heatmap 
-writing_heatmap <- report_writing %>% 
-  longer_heatmap() 
-
-writing_heatmap %>% 
-  heatmap_plot() +
-   scale_fill_gradient(
-      low = "white", 
-      high = "#75069D", 
-      limits = c(0, 7)) + 
-  labs(
-      title = "Intensity of emotions on the level of participants in the Waiting stage", 
-      tag = "3.1.")
-
-# geom_col for mean intensity
-report_writing_long %>% 
-  plot_overall() + 
-  labs(
-      title = "Report writing", 
-      tag = "5.")
-```
-
-
-## 6. facet_wrap plot for emotional intensity in all research stages
+3.3. facet_wrap plot for emotional intensity in all research stages
 ```{r}
 head(data_recoded)
 overall_intensity <- data_recoded %>% 
@@ -694,9 +651,190 @@ ggplot(overall_long, aes(x = emotion, y = mean_intensity, fill = intensity)) +
 
 ```
 
-# --------------------------------------------------------------------------------------------------------
-# PART 2: Gender, age, country, area of research, seniority level, category of work -> connections to emotions
-## Step 1: prepare data for visualization
+
+3.4 Na values in specific emotions across research stages
+```{r}
+## df for counting NA values by research stage
+na_counter <- data_recoded %>% 
+  filter(!(is.na(research_stage))) %>% 
+  select(
+    ResponseId, interest:anger, research_stage
+  ) %>% 
+  group_by(research_stage) %>% 
+  summarise(
+    across(interest:anger, ~ sum(is.na(.))))
+
+## Data analysis stage - long format for the barchart
+data_analysis_na <- na_counter %>% 
+  filter(research_stage == "Data analysis") %>% 
+  pivot_longer(
+    cols = -research_stage, 
+    names_to = "emotion", 
+    values_to = "na_count"
+  )
+
+## -> Barchart
+data_analysis_na %>% 
+  ggplot(aes(emotion, na_count)) +
+  geom_bar(stat = "identity", fill = "#34B3E0") +
+  theme(
+    axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
+    legend.position = "none") +
+  labs(
+      title = "NA values in the Data Analysis stage")
+
+## All stages -> facet_wrap
+na_all <- na_counter %>%
+  pivot_longer(
+    cols = -research_stage, 
+    names_to = "emotion", 
+    values_to = "na_count"
+  )
+
+## -> Barchart for all stages
+na_all %>% 
+  mutate(emotion = factor(emotion, levels = unique(emotion))) %>%
+  mutate(research_stage = factor(research_stage, levels = c("Project genesis/ first thoughts/ idea creation",
+  "Reality check","Preparations","Data collection","Data analysis","Report writing","Revisions","Waiting","Post-project stage"))) %>% 
+  ggplot(aes(emotion, na_count)) +
+  facet_wrap(
+    ~ research_stage) +
+  geom_bar(stat = "identity", fill = "#8DB5E0") +
+  theme(
+    axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
+    legend.position = "none") +
+  labs(
+      title = "NA values in the research stages")
+
+```
+
+3.5 Overall emotional landscape across research stages
+```{r}
+research_stage_emotions = data_recoded %>% 
+  select(research_stage, all_of(feeling_cols)) %>% 
+  filter(!(research_stage == "")) %>% 
+    mutate(across(sadness:anger, ~ 8 - .x))
+research_stage_emotions_positive = research_stage_emotions %>% 
+  select(research_stage, all_of(positive_feelings))
+research_stage_emotions_negative = research_stage_emotions %>% 
+  select(research_stage, all_of(negative_feelings)) %>% 
+    mutate(across(sadness:anger, ~ 8 - .x))
+
+research_stage_na = Nacount(data_recoded, research_stage) %>% 
+  filter(!(is.na(research_stage)))
+na_prop_diverging_plot(research_stage_na, research_stage, "Proportion of NA's in Positive and Negative Emotions")
+
+research_stage_emotions = emotion_function(research_stage_emotions, research_stage)
+
+research_stage_emotions_mean = mean_function(research_stage_emotions, research_stage)
+
+research_stage_emotions_positive = emotion_function(research_stage_emotions_positive, research_stage)
+
+research_stage_emotions_mean_positive = mean_function(research_stage_emotions_positive, research_stage)
+
+research_stage_emotions_negative = emotion_function(research_stage_emotions_negative, research_stage)
+
+research_stage_emotions_mean_negative = mean_function(research_stage_emotions_negative, research_stage)
+
+
+research_stage_pos = overall_emotion_plot_valence(
+  research_stage_emotions_mean_positive,
+  research_stage,
+  mean_emotion,
+  color_low = "orange",
+  color_high = "red",
+  "Positive Emotions"
+)
+
+research_stage_neg = overall_emotion_plot_valence(
+  research_stage_emotions_mean_negative,
+  research_stage,
+  mean_emotion,
+  color_low = "lightblue",
+  color_high = "blue",
+  "Negative Emotions"
+)
+
+overall_emotion_plot(
+  research_stage_emotions_mean,
+  research_stage,
+  mean_emotion,
+  "Overall Emotional Landscape by Research Stage")
+
+combined_research_stage = research_stage_pos + research_stage_neg
+research_stage_neg 
+research_stage_pos
+combined_research_stage
+```
+
+3.6 Emotional landscape across research stages in chronological order
+```{r}
+
+original_order = c(
+  "Project genesis/ first thoughts/ idea creation",
+  "Reality check",
+  "Preparations",
+  "Data collection",
+  "Data analysis",
+  "Report writing",
+  "Revisions",
+  "Waiting",
+  "Post-project stage")
+
+research_stage_emotions_chron = research_stage_emotions_mean %>%
+  mutate(research_stage = factor(research_stage, levels = original_order)) %>%
+  arrange(research_stage)
+
+research_stage_emotions_chron %>% 
+  ggplot(aes(x = research_stage, y = mean_emotion, group = 1, color = mean_emotion)) +
+  geom_line()+
+  geom_point(size = 3) +
+   theme_tufte()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+research_stage_emotions_chron_pos = research_stage_emotions_mean_positive %>% 
+  mutate(research_stage = factor(research_stage, levels = original_order)) %>%
+  arrange(research_stage)
+
+chron_pos_plot = research_stage_emotions_chron_pos %>% 
+  ggplot(aes(x = research_stage, y = mean_emotion, group = 1, color = mean_emotion)) +
+  labs(title = "Positive Emotions")+
+  geom_line() +
+  geom_point(size = 3) +
+   scale_color_gradient(low = "orange", high = "red")+
+   theme_tufte()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+research_stage_emotions_chron_neg = research_stage_emotions_mean_negative %>% 
+  mutate(research_stage = factor(research_stage, levels = original_order)) %>%
+  arrange(research_stage)
+
+chron_neg_plot = research_stage_emotions_chron_neg %>% 
+  ggplot(aes(x = research_stage, y = mean_emotion, group = 1, color = mean_emotion)) +
+  labs(title = "Negative Emotions")+
+  geom_line() +
+  geom_point(size = 3) +
+   theme_tufte()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+chron_comb = chron_neg_plot + chron_pos_plot
+chron_comb
+```
+
+3.7 NA values in emotions across research stages
+```{r}
+# df for counting NA values by research stage
+na_counter_all <- data_recoded %>% 
+  group_by(ResponseId) %>% 
+  summarise(
+    across(interest:anger, ~ sum(is.na(.)))) %>% 
+  mutate(sum_na_feelings = rowSums(across(interest:anger)))
+```
+
+4. Gender
+---------
+
+4.1 Intensity of emotions
 ```{r}
 genders_emotions = data_recoded %>%
   filter(
@@ -747,7 +885,6 @@ summary_genders <- genders_wide %>%
   )
 ```
 
-## Step 2: visualize overall mean intensity of emotions between women and men
 ```{r}
 ggplot(summary_genders,
        aes(x = valence, y = intensity)) +
@@ -764,43 +901,62 @@ ggplot(summary_genders,
 
 ```
 
-# --------------------------------------------------------------------------------------------------------
-# PART 3: Analysis of standard deviations within the emotions 
-## -> additional analysis: explorative, no visualization
+4.2 Overall emotional landscape across genders
+
 ```{r}
-## flag where SD of emotions are > 1 
-sd_flag <- data_recoded %>% 
-  select(
-    -Progress, -Duration, -Finished, -dismiss_1, -Q22, -Q22_6_TEXT 
-  ) %>% 
-  mutate(across("interest":"anger", as.numeric),
-         mean_landscape = rowMeans(across("interest":"anger"), na.rm = T),
-         sd_landscape = apply(across("interest":"anger"), 1, sd, na.rm = T)) %>% 
-  filter(
-    !(is.na(mean_landscape)),
-    !(is.na(sd_landscape)), 
-    !(is.nan(mean_landscape))
-  )
+# overall emotions visualization by gender
+gender_emotions = data_recoded%>% 
+  select(gender, all_of(feeling_cols)) %>% 
+  filter(!(gender %in% c("Non-binary / third gender / gender non-conforming", NA, "Prefer not to say")))
+gender_emotions = gender_emotions %>% 
+  mutate(gender = factor(gender))
+gender_emotions_positive = gender_emotions %>% 
+  select(gender, all_of(positive_feelings))
+gender_emotions_negative = gender_emotions %>% 
+  select(gender, all_of(negative_feelings)) %>% 
+  mutate(across(sadness:anger, ~ 8 - .x))
 
-## sd smaller than 0.9 -> emotional landscape lacks dimension
-small_sd <- sd_flag %>% 
-  filter(
-    sd_landscape < 0.9
-  )
+gender_na = Nacount(data_recoded, gender) %>% 
+  filter(!(gender %in% c(NA, "Non-binary / third gender / gender non-conforming", "Prefer not to say")))
+na_prop_diverging_plot(gender_na, gender, "Proportion of NA's in Positive and Negative Emotions")
 
-## exporative: greater sd, potential reasons??
-great_sd <- sd_flag %>% 
-  filter(
-    sd_landscape > 2.5
-  )
+
+gender_emotions = emotion_function(gender_emotions, gender)
+
+gender_emotions_mean = mean_function(gender_emotions, gender)
+
+gender_emotions_positive = emotion_function(gender_emotions_positive, gender)
+
+gender_emotions_mean_positive = mean_function(gender_emotions_positive, gender)
+
+gender_emotions_negative = emotion_function(gender_emotions_negative, gender)
+
+gender_emotions_mean_negative = mean_function(gender_emotions_negative, gender)
+
+
+gender_pos = overall_emotion_plot_valence(gender_emotions_mean_positive, gender, mean_emotion, color_low = "orange", color_high = "red",
+                             "Positive Emotions")
+
+gender_neg = overall_emotion_plot_valence(gender_emotions_mean_negative, gender, mean_emotion, color_low = "lightblue", 
+                     color_high = "blue", "Negative Emotions")
+
+overall_emotion_plot(gender_emotions_mean, gender, mean_emotion,
+                             "Overall Emotional Landscape by Gender")
+combined_gender = gender_pos+gender_neg
+
+combined_gender
 ```
 
+
+
+------------------------------------------- TO BE CORRECTED 
 # --------------------------------------------------------------------------------------------------------
 # PART 4: Descriptive statistics of participants with emotional landscapes dominated by mainly negative or positive emotions
 # 4.1. Age distributions 
 ## negative > positive - preparing data, saving plot as an object
 ```{r}
 ## prepare data -> positive, negative emotional averages
+
 averages_data <- data_recoded %>% 
   select(
     -Progress, -Duration, -Finished, -dismiss_1, 
@@ -1020,287 +1176,25 @@ stage_piecharts <- (stage_negative_piechart + stage_positive_piechart) &
 stage_piecharts +
   plot_annotation(title = "Overall intensity of emotions within the different research stages")
 ```
+--------------------------------------------
+--------------------------- TO BE CORRECTED
 
-# --------------------------------------------------------------------------------------------------------
-# PART 5: Distributions of positive-negative emotions by research stage
-## 5.1. Interest:
-```{r}
-# 1.1. Interest (first try)
-interest_distribution <- data_recoded%>% 
-  select(
-    interest, research_stage
-  ) %>% 
-  filter(!(is.na(interest))) %>%
-  group_by(research_stage) %>%
-  mutate(
-    research_stage = stringr::str_trunc(research_stage, 30))
-
-interest_distribution %>% 
-  ggplot(aes(x = research_stage, y = interest)) +
-  geom_col(fill = "#B5E6D0", na.rm = T
-    ) +
-    labs(
-      title = "Intensity of 'interest' through the research stages", tag = "2.") +
-    theme(
-      axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
-```
-## 5.2. Facet_wrap plot for all emotions in the research stages
-```{r}
-emotion_vars <-  c("interest", "amusement", "pride", "joy", "pleasure", "contentment", "love", "admiration", "relief", "compassion", "sadness", "guilt", "regret", "shame", "disappointment", "fear", "disgust", "contempt", "hate", "anger")                 
-
-all_distribution <- data_recoded %>% 
-  select(
-    research_stage, interest:anger
-  ) %>% 
-  filter(!(is.na(research_stage))) %>% 
-  mutate(
-    research_stage = stringr::str_trunc(research_stage, 20)) %>% 
-  group_by(research_stage) %>% 
-  summarise(
-    across(
-      all_of(feeling_cols), 
-      ~ round(mean(.x[.x != 0], na.rm = T), 3)
-    )
-  ) %>% 
-  pivot_longer(
-    cols = all_of(feeling_cols),
-    names_to = "emotion", 
-    values_to = "intensity"
-  ) %>% 
-  mutate(
-    emotion = factor(emotion, levels = emotion_vars)
-  )
-
-all_distribution %>% 
-  ggplot(aes(x = research_stage, y = intensity)) +
-  geom_col(fill = "#84CDF0", na.rm = T
-    ) +
-    labs(
-      title = "Intensity of all emotions through the research stages") +
-    theme(
-      axis.text.x = element_text(angle = 
-                                   45, vjust = 1, hjust = 1, size = 6)) +
-  facet_wrap(~ emotion, nrow = 3) 
-
-```
-
-# --------------------------------------------------------------------------------------------------------
-# PART 6: Analyses to NA data regarding the emotions (emotions that were 'not felt')
-```{r}
-## df for counting NA values by research stage
-na_counter <- data_recoded %>% 
-  select(
-    ResponseId, interest:anger, research_stage
-  ) %>% 
-  filter(!(is.na(research_stage))) %>% 
-  group_by(research_stage) %>% 
-  summarise(
-    across(interest:anger, ~ sum(is.na(.))))
-
-## Data analysis stage - long format for the barchart
-data_analysis_na <- na_counter %>% 
-  filter(research_stage == "Data analysis") %>% 
-  pivot_longer(
-    cols = -research_stage, 
-    names_to = "emotion", 
-    values_to = "na_count"
-  )
-
-## -> Barchart
-data_analysis_na %>% 
-  ggplot(aes(emotion, na_count)) +
-  geom_bar(stat = "identity", fill = "#34B3E0") +
-  theme(
-    axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
-    legend.position = "none") +
-  labs(
-      title = "NA values in the Data Analysis stage")
-
-## All stages -> facet_wrap
-na_all <- na_counter %>%
-  pivot_longer(
-    cols = -research_stage, 
-    names_to = "emotion", 
-    values_to = "na_count"
-  )
-
-## -> Barchart for all stages
-na_all %>% 
-  mutate(emotion = factor(emotion, levels = unique(emotion))) %>%
-  mutate(research_stage = factor(research_stage, levels = c("Project genesis/ first thoughts/ idea creation",
-  "Reality check","Preparations","Data collection","Data analysis","Report writing","Revisions","Waiting","Post-project stage"))) %>% 
-  ggplot(aes(emotion, na_count)) +
-  facet_wrap(
-    ~ research_stage) +
-  geom_bar(stat = "identity", fill = "#8DB5E0") +
-  theme(
-    axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
-    legend.position = "none") +
-  labs(
-      title = "NA values in the research stages")
-
-```
 
 # ========================================================================================================
 # Sanyi
 # ========================================================================================================
 
-```{r}
-# overall emotions visualization by gender
-gender_emotions = data_recoded%>% 
-  select(gender, all_of(feeling_cols)) %>% 
-  filter(!(gender %in% c("Non-binary / third gender / gender non-conforming", NA, "Prefer not to say")))
-gender_emotions = gender_emotions %>% 
-  mutate(gender = factor(gender))
-gender_emotions_positive = gender_emotions %>% 
-  select(gender, all_of(positive_feelings))
-gender_emotions_negative = gender_emotions %>% 
-  select(gender, all_of(negative_feelings)) %>% 
-  mutate(across(sadness:anger, ~ 8 - .x))
 
-gender_na = Nacount(data_recoded, gender) %>% 
-  filter(!(gender %in% c(NA, "Non-binary / third gender / gender non-conforming", "Prefer not to say")))
-na_prop_diverging_plot(gender_na, gender, "Proportion of NA's in Positive and Negative Emotions")
+5. Area
+----------
 
 
-gender_emotions = emotion_function(gender_emotions, gender)
+5.1
 
-gender_emotions_mean = mean_function(gender_emotions, gender)
+5.2
 
-gender_emotions_positive = emotion_function(gender_emotions_positive, gender)
+5.3 Overall emotional landscape by area
 
-gender_emotions_mean_positive = mean_function(gender_emotions_positive, gender)
-
-gender_emotions_negative = emotion_function(gender_emotions_negative, gender)
-
-gender_emotions_mean_negative = mean_function(gender_emotions_negative, gender)
-
-
-gender_pos = overall_emotion_plot_valence(gender_emotions_mean_positive, gender, mean_emotion, color_low = "orange", color_high = "red",
-                             "Positive Emotions")
-
-gender_neg = overall_emotion_plot_valence(gender_emotions_mean_negative, gender, mean_emotion, color_low = "lightblue", 
-                     color_high = "blue", "Negative Emotions")
-
-overall_emotion_plot(gender_emotions_mean, gender, mean_emotion,
-                             "Overall Emotional Landscape by Gender")
-combined_gender = gender_pos+gender_neg
-
-combined_gender
-```
-
-
-#overall emotions visualization by research stage
-```{r}
-research_stage_emotions = data_recoded %>% 
-  select(research_stage, all_of(feeling_cols)) %>% 
-  filter(!(research_stage == "")) %>% 
-    mutate(across(sadness:anger, ~ 8 - .x))
-research_stage_emotions_positive = research_stage_emotions %>% 
-  select(research_stage, all_of(positive_feelings))
-research_stage_emotions_negative = research_stage_emotions %>% 
-  select(research_stage, all_of(negative_feelings)) %>% 
-    mutate(across(sadness:anger, ~ 8 - .x))
-
-research_stage_na = Nacount(data_recoded, research_stage) %>% 
-  filter(!(is.na(research_stage)))
-na_prop_diverging_plot(research_stage_na, research_stage, "Proportion of NA's in Positive and Negative Emotions")
-
-research_stage_emotions = emotion_function(research_stage_emotions, research_stage)
-
-research_stage_emotions_mean = mean_function(research_stage_emotions, research_stage)
-
-research_stage_emotions_positive = emotion_function(research_stage_emotions_positive, research_stage)
-
-research_stage_emotions_mean_positive = mean_function(research_stage_emotions_positive, research_stage)
-
-research_stage_emotions_negative = emotion_function(research_stage_emotions_negative, research_stage)
-
-research_stage_emotions_mean_negative = mean_function(research_stage_emotions_negative, research_stage)
-
-
-research_stage_pos = overall_emotion_plot_valence(
-  research_stage_emotions_mean_positive,
-  research_stage,
-  mean_emotion,
-  color_low = "orange",
-  color_high = "red",
-  "Positive Emotions"
-)
-
-research_stage_neg = overall_emotion_plot_valence(
-  research_stage_emotions_mean_negative,
-  research_stage,
-  mean_emotion,
-  color_low = "lightblue",
-  color_high = "blue",
-  "Negative Emotions"
-)
-
-overall_emotion_plot(
-  research_stage_emotions_mean,
-  research_stage,
-  mean_emotion,
-  "Overall Emotional Landscape by Research Stage")
-
-combined_research_stage = research_stage_pos + research_stage_neg
-research_stage_neg 
-research_stage_pos
-combined_research_stage
-```
-```{r}
-
-original_order = c(
-  "Project genesis/ first thoughts/ idea creation",
-  "Reality check",
-  "Preparations",
-  "Data collection",
-  "Data analysis",
-  "Report writing",
-  "Revisions",
-  "Waiting",
-  "Post-project stage")
-
-research_stage_emotions_chron = research_stage_emotions_mean %>%
-  mutate(research_stage = factor(research_stage, levels = original_order)) %>%
-  arrange(research_stage)
-
-research_stage_emotions_chron %>% 
-  ggplot(aes(x = research_stage, y = mean_emotion, group = 1, color = mean_emotion)) +
-  geom_line()+
-  geom_point(size = 3) +
-   theme_tufte()+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-research_stage_emotions_chron_pos = research_stage_emotions_mean_positive %>% 
-  mutate(research_stage = factor(research_stage, levels = original_order)) %>%
-  arrange(research_stage)
-
-chron_pos_plot = research_stage_emotions_chron_pos %>% 
-  ggplot(aes(x = research_stage, y = mean_emotion, group = 1, color = mean_emotion)) +
-  labs(title = "Positive Emotions")+
-  geom_line() +
-  geom_point(size = 3) +
-   scale_color_gradient(low = "orange", high = "red")+
-   theme_tufte()+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-research_stage_emotions_chron_neg = research_stage_emotions_mean_negative %>% 
-  mutate(research_stage = factor(research_stage, levels = original_order)) %>%
-  arrange(research_stage)
-
-chron_neg_plot = research_stage_emotions_chron_neg %>% 
-  ggplot(aes(x = research_stage, y = mean_emotion, group = 1, color = mean_emotion)) +
-  labs(title = "Negative Emotions")+
-  geom_line() +
-  geom_point(size = 3) +
-   theme_tufte()+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-chron_comb = chron_neg_plot + chron_pos_plot
-chron_comb
-```
-overall emotion visualization area
 ```{r}
 area_emotions = data_recoded %>% 
   select(area, all_of(feeling_cols)) %>% 
@@ -1362,7 +1256,14 @@ area_combined
 ```
 
 
-Overall emotion visualization by position 
+6.Position
+----------
+
+6.1
+
+6.2
+
+6.3 Overall emotional landscape by position
 ```{r}
 position_emotions = data_recoded %>% 
   filter(!(position == "")) %>% 
@@ -1425,7 +1326,8 @@ position_combined = position_pos + position_neg
 position_combined
 ```
 
-
+7. Combined df of means - Research stage, gender, area, position
+------------
 DF mean emotions combined
 ```{r}
 combined_emotions <- bind_rows(
@@ -1448,11 +1350,11 @@ combined_emotions <- bind_rows(
   select(group, category, mean_emotion)
 ```
 
-Overall emotion visualization by country 
 
-#For loop attempt
+8. Country, regions
+-------------------
 
-1. OVerall emotional landscape region-wise
+8.1 OVerall emotional landscape region-wise
 ```{r}
 continents <- c("Europe", "Africa", "Asia", "North America", "South America/ Central America", "Oceania")
 
@@ -1477,7 +1379,9 @@ for (cont in continents) {
 continent_results
 continent_plots
 ```
-2. Intensity of positive emotions region-wise
+
+
+8.2 Intensity of positive emotions region-wise
 ```{r}
 #Positive
 continent_results_pos = list()
@@ -1495,7 +1399,10 @@ for (cont in continents) {
 continent_plots_pos
 
 ```
-3. Intensity of negative emotions region-wise
+
+
+
+8.3 Intensity of negative emotions region-wise
 ```{r}
 #Negative
 continent_results_neg = list()
@@ -1514,13 +1421,18 @@ for (cont in continents) {
 continent_results_neg
 continent_plots_neg
 ```
-4. Combined plots
+
+
+8.4. Combined plots
 ```{r}
 combined_plots = Map(`+`, continent_plots_pos, continent_plots_neg) #The map goes through the two vectors in parallel --> given they contain plots, the combined plots are this easy to create
 
 combined_plots
 ```
-5. Countries with the top 10 most respondents
+
+
+
+8.5 Countries with the top 10 most respondents
 ```{r}
 #based on frequency
 top10_countries <- country_emotions_clean %>% 
@@ -1563,7 +1475,9 @@ country_11_groups %>%
     legend.position = "none")+
   theme(axis.ticks.y = element_blank())
 ```
-6.Country mapping with at least 10 respondents from the given country 
+
+
+8.6 Country mapping with at least 10 respondents from the given country 
 ```{r}
 country_emotions_min10 = country_emotions_clean %>% 
   mutate(country = factor(country)) %>% 
@@ -1580,9 +1494,11 @@ min10_plot
 
 
 
+9. Attributional analysis of general feeling
+--------------------------------------------
+
 ```{r}
 df_feeling_general = data_recoded %>% 
-  drop_na() %>% 
   filter(!(cause_general %in% c("", "-", "na", "Na", "NA", "I don't know", "I dont know"))) %>% 
   filter(!(feeling_general_1 == 0)) %>% 
   select(ResponseId,feeling_general_1, cause_general ) %>% 

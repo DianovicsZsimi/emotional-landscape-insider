@@ -372,9 +372,8 @@ plot_distribution_categorical <- function(data,
                                           custom_levels = NULL,
                                           remove_parentheses = FALSE,
                                           angle = 30) {
-  data_clean <- data[-c(1, 2), ]
   
-  df_counts <- data_clean %>%
+  df_counts <- data%>%
     mutate(
       var = as.character(.data[[variable_name]]),
       var = ifelse(var == "" | is.na(var), NA, var)
