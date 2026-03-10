@@ -435,6 +435,8 @@ color_vector = c(
   "Revisions" = "#c6a1f9"
 )
 
+plots_emotions_stages = list()
+
 for (stage in unique(na.omit(data_recoded$research_stage))) {
   stage_data <- data_recoded %>% 
     filter(research_stage == stage) %>% 
@@ -448,16 +450,22 @@ for (stage in unique(na.omit(data_recoded$research_stage))) {
       title = paste("Overall intensity of emotions in the", stage, "stage")
     ) 
   
+  plots_emotions_stages[[stage]] <- plot 
+  
   print(plot)
 }
 
+
+plots_heatmap_stages <- list()
+
 for (stage in unique(na.omit(data_recoded$research_stage))) {
+
   stage_data <- data_recoded %>%
     filter(research_stage == stage) %>%
     analysis_select()
   
   stage_heatmap <- stage_data %>% 
-  longer_heatmap()
+    longer_heatmap()
   
   plot <- stage_heatmap %>%
     heatmap_plot() +
@@ -465,12 +473,17 @@ for (stage in unique(na.omit(data_recoded$research_stage))) {
       low = "white", 
       high = color_vector[stage], 
       limits = c(0, 7)) +
-  labs(
-      title = paste("Intensity of emotions on the level of participants in the", stage, "stage"))
-  
-    print(plot)
+    labs(
+      title = paste("Intensity of emotions on the level of participants in the", stage, "stage")
+    )
+
+  plots_heatmap_stages[[stage]] <- plot 
+
+  print(plot) 
 }
-  
+
+plots_emotions_stages
+plots_heatmap_stages
 ```
 
 3.1- Intensity of specific emotions across research stages - version B
@@ -1570,4 +1583,35 @@ ggplot(valence_counts_general,
   ) +
   theme_minimal(base_size = 13)
 ```
+10.Saving plots
+--------------
 
+10.1 Research stage heatmaps
+```{r}
+for (stage in names(plots_heatmap_stages)) {
+
+  ggsave(
+    filename = paste0("heatmap_", gsub("[^A-Za-z0-9]", "_", stage), ".png"),
+    plot = plots_heatmap_stages[[stage]],
+    width = 8,
+    height = 6
+  )
+
+} 
+```
+
+10.2 Emotions across stages
+```{r}
+for (stage in names(plots_emotions_stages)) {
+
+  ggsave(
+    filename = paste0("heatmap_", gsub("[^A-Za-z0-9]", "_", stage), ".png"),
+    plot = plots_emotions_stages[[stage]],
+    width = 8,
+    height = 6
+  )
+
+}
+```
+10.3
+```{r}
