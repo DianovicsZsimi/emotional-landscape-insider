@@ -922,7 +922,8 @@ gender_emotions = data_recoded%>%
   select(gender, all_of(feeling_cols)) %>% 
   filter(!(gender %in% c("Non-binary / third gender / gender non-conforming", NA, "Prefer not to say")))
 gender_emotions = gender_emotions %>% 
-  mutate(gender = factor(gender))
+  mutate(gender = factor(gender)) %>% 
+    mutate(across(sadness:anger, ~ 8 - .x))
 gender_emotions_positive = gender_emotions %>% 
   select(gender, all_of(positive_feelings))
 gender_emotions_negative = gender_emotions %>% 
