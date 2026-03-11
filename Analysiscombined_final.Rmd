@@ -242,7 +242,9 @@ negative_means <- averages_data %>%
 
 # 1. Study description, descriptives
 ```{r}
-# updated dataset to match the correct one
+data_recoded$Status <- ifelse(data_recoded$Finished,
+                         "Completed",
+                         "Not Completed")
 plot_distribution_categorical(data_recoded, "Status", "Questionnaire Completion")
 ```
 
