@@ -195,8 +195,8 @@ country_emotions_clean <- country_emotions_clean %>%
 
 country_emotions_clean = country_emotions_clean %>% 
   mutate(country = factor(country)) %>% 
-   mutate(across(sadness:anger, ~ 8 - .x)) %>% 
-   mutate(mean_feeling = rowMeans(across(interest:compassion), na.rm = TRUE))
+   mutate(mean_feeling = rowMeans(across(interest:compassion), na.rm = TRUE)) %>% 
+  mutate(across(sadness:anger, ~ 8 - .x))
 
 
 
@@ -500,6 +500,17 @@ plots_heatmap_stages
 
 ## 2.2. Intensity of specific emotions across research stages - version B
 ```{r}
+original_order = c(
+  "Project genesis/ first thoughts/ idea creation",
+  "Reality check",
+  "Preparations",
+  "Data collection",
+  "Data analysis",
+  "Report writing",
+  "Revisions",
+  "Waiting",
+  "Post-project stage")
+
 for (feeling in feeling_cols) {
   feeling_data <- data_recoded %>%
     select(all_of(c(feeling, "research_stage"))) %>%
@@ -727,7 +738,7 @@ na_all %>%
 
 ```
 
-3.5 Overall emotional landscape across research stages
+2.7 Overall emotional landscape across research stages
 ```{r}
 research_stage_emotions = data_recoded %>% 
   select(research_stage, all_of(feeling_cols)) %>% 
@@ -786,7 +797,7 @@ research_stage_pos
 combined_research_stage
 ```
 
-3.6 Emotional landscape across research stages in chronological order
+2.8 Emotional landscape across research stages in chronological order
 ```{r}
 
 original_order = c(
@@ -833,6 +844,7 @@ chron_neg_plot = research_stage_emotions_chron_neg %>%
   labs(title = "Negative Emotions")+
   geom_line() +
   geom_point(size = 3) +
+   scale_color_gradient(low = "lightblue", high = "darkblue")+
    theme_tufte()+
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
@@ -840,7 +852,7 @@ chron_comb = chron_neg_plot + chron_pos_plot
 chron_comb
 ```
 
-## 2.7.  NA values in emotions across research stages
+## 2.9.  NA values in emotions across research stages
 ```{r}
 # df for counting NA values by research stage
 na_counter_all <- data_recoded %>% 
@@ -850,9 +862,10 @@ na_counter_all <- data_recoded %>%
   mutate(sum_na_feelings = rowSums(across(interest:anger)))
 ```
 
-## 2.8. Distributions: overall emotional landscape dominated by positive or negative emotions - comparison
-### 2.8.1. Negative emotions more dominant - prepare dataset, create piechart
+## 2.10. Distributions: overall emotional landscape dominated by positive or negative emotions - comparison
+### 2.10.1. Negative emotions more dominant - prepare dataset, create piechart
 ```{r}
+
 stage_negative <- negative_means %>% 
   rename(category = research_stage) %>% ## rename column for functions 
   mutate(category = as.character(category)) %>% 
@@ -870,8 +883,14 @@ stage_negative_piechart <- stage_negative %>%
 stage_negative_piechart
 ```
 
-### 2.8.2. Positive emotions more dominant -> prepare df, create piechart
+### 2.10.2. Positive emotions more dominant -> prepare df, create piechart
 ```{r}
+positive_means <- averages_data %>% 
+  filter(
+    ((pos_mean > neg_mean) | is.na(neg_mean)), 
+    !is.na(pos_mean)
+  ) 
+
 stage_positive <- positive_means %>% 
   rename(category = research_stage) %>% ## rename column for functions 
   categories_prepare()
@@ -885,7 +904,7 @@ stage_positive_piechart <- stage_positive %>%
 
 ```
 
-### 2.8.3. Combining the piecharts for comparison
+### 2.10.3. Combining the piecharts for comparison
 ```{r}
 stage_piecharts <- (stage_negative_piechart + stage_positive_piechart)
 
@@ -1130,7 +1149,69 @@ area_piecharts +
 ## percentages are the same - causes?? 
 ```
 
+### 5.2 Overall emotional landscape by area
+```{r}
+area_emotions = data_recoded %>% 
+  select(area, all_of(feeling_cols)) %>% 
+  filter(!(area == "")) %>% 
+  mutate(across(sadness:anger, ~ 8 - .x))
+area_emotions_positive = area_emotions %>%
+select(area, all_of(positive_feelings))
+area_emotions_negative = area_emotions %>% 
+  select(area, all_of(negative_feelings))
 
+area_na = Nacount(data_recoded, area) %>% 
+  filter(!(area == ""))
+
+na_prop_diverging_plot(
+  area_na,
+  area,
+  "Proportion of NA's in Positive and Negative Emotions")
+area_emotions = emotion_function(area_emotions, area)
+
+area_emotions_mean = mean_function(area_emotions, area)
+
+area_emotions_positive = emotion_function(area_emotions_positive, area)
+
+area_emotions_mean_positive = mean_function(area_emotions_positive, area)
+
+area_emotions_negative = emotion_function(area_emotions_negative, area)
+
+area_emotions_mean_negative = mean_function(area_emotions_negative, area)
+
+
+area_pos = overall_emotion_plot_valence(
+  area_emotions_mean_positive,
+  area,
+  mean_emotion,
+  color_low = "orange",
+  color_high = "red",
+  "Positive Emotions"
+)
+
+area_neg = overall_emotion_plot_valence(
+  area_emotions_mean_negative,
+  area,
+  mean_emotion,
+  color_low = "lightblue",
+  color_high = "blue",
+  "Negative Emotions"
+)
+
+
+overall_emotion_plot(
+  area_emotions_mean,
+  area,
+  mean_emotion,
+  "Overall Emotional Landscape by Area"
+)
+
+combined_area = area_pos + area_neg
+
+combined_area
+
+
+```
 
 # 6. Position
 ## 6.1. Distributions: emotional landscapes dominated by mainly negative or positive emotions
@@ -1178,7 +1259,8 @@ piechart_position +
 ```{r}
 position_emotions = data_recoded %>% 
   filter(!(position == "")) %>% 
-  select(position, all_of(feeling_cols))
+  select(position, all_of(feeling_cols)) %>% 
+  mutate(across(sadness:anger, ~ 8 - .x))
 position_emotions_positive = position_emotions %>%
   select(position, all_of(positive_feelings))
 position_emotions_negative = position_emotions %>% 
@@ -1508,5 +1590,3 @@ for (stage in names(plots_emotions_stages)) {
 
 }
 ```
-## 10.3.
-```{r}
