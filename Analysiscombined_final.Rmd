@@ -5,8 +5,7 @@ date: "2026-02-28"
 output: html_document
 ---
 
-#load libraries
----------------
+# 00. Load libraries
 ```{r}
 # Updated library loading with checks for installation
 
@@ -40,8 +39,7 @@ library(maps)
 ```
 
 
-1. Data cleaning, data wrangling
---------------------------------
+# 0. Data cleaning, data wrangling
 ```{r}
 # Updated data loading with checks for missing data handling
 source("functionscombined_new.R")
@@ -215,19 +213,44 @@ country_emotions_clean_neg = country_emotions_clean %>%
    mutate(across(sadness:anger, ~ 8 - .x)) %>% 
   filter(!(NAcount > 5)) %>% 
   mutate(mean_feeling = rowMeans(across(sadness:anger), na.rm = TRUE))
+
+## Prepare data for piecharts for comparison - overall emotional landscape dominated by mostly positive or negative emotions 
+### prepare data -> positive, negative emotional averages
+
+averages_data <- data_recoded %>% 
+  select(
+    -Progress, -Duration, -Finished, -dismiss_1, 
+  ) %>% 
+  mutate(
+    across(interest:anger, as.numeric), 
+    pos_mean = rowMeans(across(interest:compassion), na.rm = T), 
+    neg_mean = rowMeans(across(sadness:anger), na.rm = T), 
+    across(pos_mean:neg_mean, ~ na_if(., NaN))
+  ) %>% 
+  select(
+    ResponseId, research_stage, interest:anger, category_of_work, position, area, age, country, country_other, pos_mean, neg_mean, gender
+  )
+
+## filter: average intensity of emotions is higher regarding the negative emotions
+negative_means <- averages_data %>% 
+  filter(
+    (pos_mean < neg_mean), 
+    !is.na(pos_mean), 
+    !is.na(neg_mean) 
+  )
 ```
 
-2. Study description, descriptives
-----------------------------------
+# 1. Study description, descriptives
 ```{r}
 # updated dataset to match the correct one
 plot_distribution_categorical(data_recoded, "Status", "Questionnaire Completion")
 ```
 
+## 1.1. Distributions
+### Gender distribution - Men and Women
 ```{r}
 # The plot is hard to read, I suggest cleaning the labels
 
-#gender distribution
 plot_distribution_categorical(
   data_recoded,
   "gender",
@@ -237,15 +260,13 @@ plot_distribution_categorical(
     "Woman"))
 ```
 
-
+### Research area distribution
 ```{r}
-#research area distribution
 plot_distribution_categorical(data_recoded, "area", "Participants by Research Area")
 ```
 
-
+### Research stage distribution
 ```{r}
-#research stage distribution
 plot_distribution_categorical(
   data_recoded,
   "research_stage",
@@ -254,22 +275,19 @@ plot_distribution_categorical(
 )
 ```
 
-
+### Position distribution
 ```{r}
-#position distribution
 plot_distribution_categorical(data_recoded, "position", "Participants by Position")
 ```
 
+### Work distribution
 ```{r}
-#work distribution
 plot_distribution_categorical(data_recoded, "category_of_work", "Participants by Category of Work")
 ```
 
 
+### Age distribution
 ```{r}
-#Other distributions
-#age distribution
-
 df_age <- data_recoded %>%
   mutate(
     age = as.numeric(age)
@@ -300,10 +318,8 @@ min_age
 max_age
 ```
 
+### Questionnaire dropout spikes
 ```{r}
-
-#questionnaire dropout spikes
-
 df_dropout <- data_recoded %>%
   mutate(Progress = as.numeric(Progress)) %>%
   filter(!is.na(Progress), Progress < 100)
@@ -340,10 +356,8 @@ ggplot(df_dropout_counts, aes(x = Progress, y = n)) +
 
 ```
 
-
+### Country distribution - World map
 ```{r}
-#country distribution
-
 df_country_map <- data_recoded %>%
   mutate(country = ifelse(country == "" | is.na(country), NA, country)) %>%
   filter(!is.na(country)) %>%
@@ -387,7 +401,7 @@ df_country_ranked <- df_country_map %>%
 df_country_ranked
 ```
 
-2.1 SD in emotions
+## 1.2. SD in emotions
 ```{r}
 ## flag where SD of emotions are > 1 
 sd_flag <- data_recoded %>% 
@@ -417,11 +431,9 @@ great_sd <- sd_flag %>%
 ```
 
 
-3. Research stage
-------------------
+# 2. Research stage
 
-3.1 - Intensity of specific emotions across research stages - version A
-# For loop solution
+## 2.1. Intensity of specific emotions across research stages - version A
 ```{r}
 color_vector = c(
   "Data analysis" = "#02452B", 
@@ -486,8 +498,7 @@ plots_emotions_stages
 plots_heatmap_stages
 ```
 
-3.1- Intensity of specific emotions across research stages - version B
-
+## 2.2. Intensity of specific emotions across research stages - version B
 ```{r}
 for (feeling in feeling_cols) {
   feeling_data <- data_recoded %>%
@@ -504,10 +515,7 @@ for (feeling in feeling_cols) {
     select(all_of(c(feeling, "research_stage"))) %>% 
     filter(!is.na(.data[[feeling]])) %>%
     group_by(research_stage) %>%
-    mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
-    mutate(
-      research_stage = stringr::str_trunc(research_stage, 30)
-    )
+    mutate(research_stage = factor(research_stage, levels = original_order))
 
   plots_specfeeling[[feeling]] <- feeling_distribution %>% 
     ggplot(aes(x = research_stage, y = .data[[feeling]])) +
@@ -523,8 +531,7 @@ plots_specfeeling
 
 ```
 
-3.1 - Intensity of specific emotions across research stages - version C
-
+## 2.3. Intensity of specific emotions across research stages - version C
 ```{r}
 all_distribution <- data_recoded %>% 
   select(
@@ -564,8 +571,7 @@ all_distribution %>%
 ```
 
 
-3.2. Post-project stage
-
+## 2.4. Post-project stage
 ```{r}
 post_project <- data_recoded %>% 
   filter(
@@ -628,7 +634,7 @@ post_project3_long %>%
       tag = "4.3.")
 ```
 
-3.3. facet_wrap plot for emotional intensity in all research stages
+## 2.5. facet_wrap plot for emotional intensity in all research stages
 ```{r}
 head(data_recoded)
 overall_intensity <- data_recoded %>% 
@@ -665,7 +671,7 @@ ggplot(overall_long, aes(x = emotion, y = mean_intensity, fill = intensity)) +
 ```
 
 
-3.4 Na values in specific emotions across research stages
+## 2.6. Na values in specific emotions across research stages
 ```{r}
 ## df for counting NA values by research stage
 na_counter <- data_recoded %>% 
@@ -834,7 +840,7 @@ chron_comb = chron_neg_plot + chron_pos_plot
 chron_comb
 ```
 
-3.7 NA values in emotions across research stages
+## 2.7.  NA values in emotions across research stages
 ```{r}
 # df for counting NA values by research stage
 na_counter_all <- data_recoded %>% 
@@ -844,10 +850,51 @@ na_counter_all <- data_recoded %>%
   mutate(sum_na_feelings = rowSums(across(interest:anger)))
 ```
 
-4. Gender
----------
+## 2.8. Distributions: overall emotional landscape dominated by positive or negative emotions - comparison
+### 2.8.1. Negative emotions more dominant - prepare dataset, create piechart
+```{r}
+stage_negative <- negative_means %>% 
+  rename(category = research_stage) %>% ## rename column for functions 
+  mutate(category = as.character(category)) %>% 
+  mutate(category = ifelse(category == "Project genesis/ first thoughts/ idea creation", "Project genesis", category)) %>% 
+  categories_prepare() %>% 
+  mutate(category = as.factor(category))
+  
 
-4.1 Intensity of emotions
+## piechart plot
+stage_negative_piechart <- stage_negative %>% 
+  piechart_plot(legend_name = "Research stage") + 
+  labs(title = "Negative emotions more dominant") +
+   theme(legend.position = "bottom", legend.justification = "left")
+  
+stage_negative_piechart
+```
+
+### 2.8.2. Positive emotions more dominant -> prepare df, create piechart
+```{r}
+stage_positive <- positive_means %>% 
+  rename(category = research_stage) %>% ## rename column for functions 
+  categories_prepare()
+  
+
+## piechart plot
+stage_positive_piechart <- stage_positive %>% 
+  piechart_plot(legend_name = "Research stage") +
+  labs(title = "Positive emotions more dominant") + 
+  theme(legend.position = "none")
+
+```
+
+### 2.8.3. Combining the piecharts for comparison
+```{r}
+stage_piecharts <- (stage_negative_piechart + stage_positive_piechart)
+
+stage_piecharts +
+  plot_annotation(title = "Overall intensity of emotions within the different research stages")
+```
+
+# 3. Gender
+## 3.1. Intensity of emotions
 ```{r}
 genders_emotions = data_recoded %>%
   filter(
@@ -914,7 +961,7 @@ ggplot(summary_genders,
 
 ```
 
-4.2 Overall emotional landscape across genders
+## 3.2. Overall emotional landscape across genders
 
 ```{r}
 # overall emotions visualization by gender
@@ -962,37 +1009,9 @@ combined_gender
 ```
 
 
-
-------------------------------------------- TO BE CORRECTED 
-# --------------------------------------------------------------------------------------------------------
-# PART 4: Descriptive statistics of participants with emotional landscapes dominated by mainly negative or positive emotions
-# 4.1. Age distributions 
-## negative > positive - preparing data, saving plot as an object
+## 3.3. Distributions: emotional landscapes dominated by mainly negative or positive emotions: Age-gender distributions 
+### 3.3.1. Negative emotions more dominant - preparing data, saving plot as an object
 ```{r}
-## prepare data -> positive, negative emotional averages
-
-averages_data <- data_recoded %>% 
-  select(
-    -Progress, -Duration, -Finished, -dismiss_1, 
-  ) %>% 
-  mutate(
-    across(interest:anger, as.numeric), 
-    pos_mean = rowMeans(across(interest:compassion), na.rm = T), 
-    neg_mean = rowMeans(across(sadness:anger), na.rm = T), 
-    across(pos_mean:neg_mean, ~ na_if(., NaN))
-  ) %>% 
-  select(
-    ResponseId, research_stage, interest:anger, category_of_work, position, area, age, country, country_other, pos_mean, neg_mean, gender
-  )
-
-## filter: average intensity of emotions is higher regarding the negative emotions
-negative_means <- averages_data %>% 
-  filter(
-    (pos_mean < neg_mean), 
-    !is.na(pos_mean), 
-    !is.na(neg_mean) 
-  )
-
 ## classifying the data types of columns
 age_negative <- negative_means %>%
   pos_neg_classify() ## age: as_numeric, gender: as_factor, filter if age of gender is NA
@@ -1007,7 +1026,7 @@ negative_age_plot <- pyramid_plot(age_negative_counts) +
   labs(title = "Overally negative emotions")
 ```
 
-## positive > negative - prepare data, save plot as an object
+### 3.3.2. Positive emotions more dominant - prepare data, save plot as an object
 ```{r}
 positive_means <- averages_data %>% 
   filter(
@@ -1029,7 +1048,7 @@ positive_age_plot <- pyramid_plot(age_positive_counts) +
   labs(title = "Overally positive emotions")
 ```
 
-## Combining the two age pyramids
+### 3.3.3. Combining the two age pyramids for comparison
 ```{r}
 age_comparisons <- positive_age_plot | negative_age_plot
 
@@ -1037,8 +1056,85 @@ age_comparisons +
   plot_annotation(title = "Age distributions")
 ```
 
-# 4.2. Position 
-## negative > positive - prepare data, create piechart
+# 4. Category_of_work
+## Distributions: overall emotional landscape dominated by mostly positive or negative emotions 
+## 4.1. Negative emotions more dominant -> prepare data, create piechart
+```{r}
+work_negative <- negative_means %>% 
+  rename(category = category_of_work) %>% ## rename column for the functions
+  categories_prepare()
+
+## pie chart for the distribution of the categories
+work_negative_piechart <- work_negative %>% 
+  piechart_plot(legend_name = "Category of work") +
+  labs(title = "Negative emotions more dominant") +
+   theme(legend.position = "bottom", legend.justification = "left")
+```
+## 4.2. Positive emotions more dominant -> create piechart, prepare data
+```{r}
+work_positive <- positive_means %>% 
+  rename(category = category_of_work) %>% ## rename column for the functions
+  categories_prepare()
+
+## pie chart for the distribution of the categories
+work_positive_piechart <- work_positive %>% 
+  piechart_plot(legend_name = "Category of work") + 
+  labs(title = "Positive emotions more dominant") +
+  theme(legend.position = "none")
+
+work_positive_piechart
+```
+## 4.3. Combine two piecharts
+```{r}
+work_piecharts <- (work_negative_piechart + work_positive_piechart)
+
+work_piecharts +
+  plot_annotation(title = "Overall intensity of emotions within the different categories of work")
+```
+
+# 5. Area
+## 5.1. Distributions: emotional landscapes dominated by mainly negative or positive emotions
+### 5.1.1. Negative emotions more dominant than positive emotions -> prepare dataset, create piechart 
+```{r}
+area_negative <- negative_means %>% 
+  rename(category = area) %>% ## rename column for the functions
+  categories_prepare() 
+
+area_negative_piechart <- piechart_plot(area_negative, legend_name = "Research area") + 
+  labs(title = "Negative emotions more dominant") +
+   theme(legend.position = "bottom", legend.justification = "left")
+
+area_negative_piechart
+```
+
+### 5.1.2. Positive emotions more dominant than negative emotions -> prepare dataset, create piechart 
+```{r}
+area_positive <- positive_means %>% 
+  rename(category = area) %>% ## rename column for the functions
+  categories_prepare()
+
+area_positive_piechart <- piechart_plot(area_negative, legend_name = "Research stage") + 
+  labs(title = "Positive emotions more dominant") +
+  theme(legend.position = "none")
+
+area_positive_piechart
+```
+
+### 5.1.3. Combine piecharts 
+```{r}
+area_piecharts <- (area_negative_piechart + area_positive_piechart) 
+
+area_piecharts +
+  plot_annotation(title = "Overall intensity of emotions within the different research areas")
+
+## percentages are the same - causes?? 
+```
+
+
+
+# 6. Position
+## 6.1. Distributions: emotional landscapes dominated by mainly negative or positive emotions
+### 6.1.1. Negative emotions more dominant - prepare data, create piechart
 ```{r}
 position_negative <- negative_means %>%
   rename(category = position) %>% ## rename column for functions
@@ -1055,7 +1151,7 @@ piechart_position_negative <- position_negative %>%
 piechart_position_negative
 ```
 
-## positive > negative - create piechart 
+### 6.1.2. Positive emotions more dominant - create piechart 
 ```{r}
 position_positive <- positive_means %>%
   rename(category = position) %>% ## rename column for functions
@@ -1069,7 +1165,7 @@ piechart_position_positive <- position_positive %>%
 
 ```
 
-## Combine two piecharts 
+### 6.1.3. Combine two piecharts for comparison
 ```{r}
 piechart_position <- (piechart_position_negative + piechart_position_positive)
 
@@ -1078,206 +1174,7 @@ piechart_position +
   plot_annotation(title = "Overall intensity of emotions within the positions")
 ```
 
-# 4.3. Category_of_work
-## negative > positive -> prepare data, create piechart
-```{r}
-work_negative <- negative_means %>% 
-  rename(category = category_of_work) %>% ## rename column for the functions
-  categories_prepare()
-
-## pie chart for the distribution of the categories
-work_negative_piechart <- work_negative %>% 
-  piechart_plot(legend_name = "Category of work") +
-  labs(title = "Negative emotions more dominant")+
-   theme(legend.position = "bottom", legend.justification = "left")
-  
-```
-## positive > negative -> create piechart, prepare data
-```{r}
-work_positive <- positive_means %>% 
-  rename(category = category_of_work) %>% ## rename column for the functions
-  categories_prepare()
-
-## pie chart for the distribution of the categories
-work_positive_piechart <- work_positive %>% 
-  piechart_plot(legend_name = "Category of work") + 
-  labs(title = "Positive emotions more dominant")+
-  theme(legend.position = "none")
-```
-## Combine two piecharts
-```{r}
-work_piecharts <- (work_negative_piechart + work_positive_piechart)
-
-work_piecharts +
-  plot_annotation(title = "Overall intensity of emotions within the different categories of work")
-```
-
-# 4.4. Research area 
-## negative > positive -> prepare dataset, create piechart 
-```{r}
-area_negative <- negative_means %>% 
-  rename(category = area) %>% ## rename column for the functions
-  categories_prepare() 
-
-area_negative_piechart <- piechart_plot(area_negative, legend_name = "Research area") + 
-  labs(title = "Negative emotions more dominant")
-
-area_negative_piechart
-```
-
-## positive > negative -> prepare dataset, create piechart 
-```{r}
-area_positive <- positive_means %>% 
-  rename(category = area) %>% ## rename column for the functions
-  categories_prepare()
-
-area_positive_piechart <- piechart_plot(area_negative, legend_name = "Research stage") + 
-  labs(title = "Positive emotions more dominant")
-
-area_positive_piechart
-```
-
-## Combine piecharts 
-```{r}
-area_piecharts <- (area_negative_piechart + area_positive_piechart) & 
-  plot_layout(guides = "collect") & 
-  theme(legend.position = "bottom")
-
-area_piecharts +
-  plot_annotation(title = "Overall intensity of emotions within the different research areas")
-
-## percentages are the same - causes?? 
-```
-
-# 4.5. Research stage
-```{r}
-stage_negative <- negative_means %>% 
-  rename(category = research_stage) %>% ## rename column for functions 
-  categories_prepare() %>% 
- mutate(
-   category = recode(category,
-                           "Project genesis" = "Project genesis/ first thoughts/ idea creation"))
-
-## piechart plot
-stage_negative_piechart <- stage_negative %>% 
-  piechart_plot(legend_name = "Research stage") + 
-  labs(
-      title = "Negative emotions more dominant"
-    )
-```
-
-## positive > negative -> prepare df, create piechart
-```{r}
-stage_positive <- positive_means %>% 
-  rename(category = research_stage) %>% ## rename column for functions 
-  categories_prepare() %>% 
-  mutate(
-   category = recode(category,
-                           "Project genesis" = "Project genesis/ first thoughts/ idea creation"))
-## piechart plot
-stage_positive_piechart <- stage_positive %>% 
-  piechart_plot(legend_name = "Research stage") +
-  labs(title = "Positive emotions more dominant")
-
-```
-
-## Combining the piecharts
-```{r}
-stage_piecharts <- (stage_negative_piechart + stage_positive_piechart) & 
-  plot_layout(guides = "collect") & 
-  theme(legend.position = "bottom")
-
-stage_piecharts +
-  plot_annotation(title = "Overall intensity of emotions within the different research stages")
-```
---------------------------------------------
---------------------------- TO BE CORRECTED
-
-
-# ========================================================================================================
-# Sanyi
-# ========================================================================================================
-
-
-5. Area
-----------
-
-
-5.1
-
-5.2
-
-5.3 Overall emotional landscape by area
-
-```{r}
-area_emotions = data_recoded %>% 
-  select(area, all_of(feeling_cols)) %>% 
-  filter(!(area == "")) %>% 
-  mutate(across(sadness:anger, ~ 8 - .x))
-area_emotions_positive = area_emotions %>%
-select(area, all_of(positive_feelings))
-area_emotions_negative = area_emotions %>% 
-  select(area, all_of(negative_feelings)) %>% 
-  mutate(across(sadness:anger, ~ 8 - .x))
-
-area_na = Nacount(data_recoded, area) %>% 
-  filter(!(area == ""))
-
-na_prop_diverging_plot(
-  area_na,
-  area,
-  "Proportion of NA's in Positive and Negative Emotions")
-area_emotions = emotion_function(area_emotions, area)
-
-area_emotions_mean = mean_function(area_emotions, area)
-
-area_emotions_positive = emotion_function(area_emotions_positive, area)
-
-area_emotions_mean_positive = mean_function(area_emotions_positive, area)
-
-area_emotions_negative = emotion_function(area_emotions_negative, area)
-
-area_emotions_mean_negative = mean_function(area_emotions_negative, area)
-
-area_pos = overall_emotion_plot_valence(
-  area_emotions_mean_positive,
-  area,
-  mean_emotion,
-  color_low = "orange",
-  color_high = "red",
-  "Positive Emotions"
-)
-
-area_neg = overall_emotion_plot_valence(
-  area_emotions_mean_negative,
-  area,
-  mean_emotion,
-  color_low = "lightblue",
-  color_high = "blue",
-  "Negative Emotions"
-)
-
-
-overall_emotion_plot(
-  area_emotions_mean,
-  area,
-  mean_emotion,
-  "Overall Emotional Landscape by Position"
-)
-
-area_combined = area_pos + area_neg
-area_combined
-```
-
-
-6.Position
-----------
-
-6.1
-
-6.2
-
-6.3 Overall emotional landscape by position
+## 6.2. Overall emotional landscape by position
 ```{r}
 position_emotions = data_recoded %>% 
   filter(!(position == "")) %>% 
@@ -1340,9 +1237,9 @@ position_combined = position_pos + position_neg
 position_combined
 ```
 
-7. Combined df of means - Research stage, gender, area, position
-------------
-DF mean emotions combined
+# 7. Combined df of means - Research stage, gender, area, position
+
+## 7.1. DF mean emotions combined
 ```{r}
 combined_emotions <- bind_rows(
   area_emotions_mean %>% 
@@ -1365,10 +1262,8 @@ combined_emotions <- bind_rows(
 ```
 
 
-8. Country, regions
--------------------
-
-8.1 OVerall emotional landscape region-wise
+# 8. Country, regions
+## 8.1. Overall emotional landscape region-wise
 ```{r}
 continents <- c("Europe", "Africa", "Asia", "North America", "South America/ Central America", "Oceania")
 
@@ -1395,7 +1290,7 @@ continent_plots
 ```
 
 
-8.2 Intensity of positive emotions region-wise
+## 8.2. Intensity of positive emotions region-wise
 ```{r}
 #Positive
 continent_results_pos = list()
@@ -1416,7 +1311,7 @@ continent_plots_pos
 
 
 
-8.3 Intensity of negative emotions region-wise
+## 8.3. Intensity of negative emotions region-wise
 ```{r}
 #Negative
 continent_results_neg = list()
@@ -1437,7 +1332,7 @@ continent_plots_neg
 ```
 
 
-8.4. Combined plots
+## 8.4. Combined plots
 ```{r}
 combined_plots = Map(`+`, continent_plots_pos, continent_plots_neg) #The map goes through the two vectors in parallel --> given they contain plots, the combined plots are this easy to create
 
@@ -1446,7 +1341,7 @@ combined_plots
 
 
 
-8.5 Countries with the top 10 most respondents
+## 8.5. Countries with the top 10 most respondents
 ```{r}
 #based on frequency
 top10_countries <- country_emotions_clean %>% 
@@ -1491,7 +1386,7 @@ country_11_groups %>%
 ```
 
 
-8.6 Country mapping with at least 10 respondents from the given country 
+## 8.6. Country mapping with at least 10 respondents from the given country 
 ```{r}
 country_emotions_min10 = country_emotions_clean %>% 
   mutate(country = factor(country)) %>% 
@@ -1508,8 +1403,7 @@ min10_plot
 
 
 
-9. Attributional analysis of general feeling
---------------------------------------------
+# 9. Attributional analysis of general feeling
 
 ```{r}
 df_feeling_general = data_recoded %>% 
@@ -1584,10 +1478,10 @@ ggplot(valence_counts_general,
   ) +
   theme_minimal(base_size = 13)
 ```
-10.Saving plots
---------------
 
-10.1 Research stage heatmaps
+# 10. Saving plots
+
+## 10.1. Research stage heatmaps
 ```{r}
 for (stage in names(plots_heatmap_stages)) {
 
@@ -1601,7 +1495,7 @@ for (stage in names(plots_heatmap_stages)) {
 } 
 ```
 
-10.2 Emotions across stages
+## 10.2. Emotions across stages
 ```{r}
 for (stage in names(plots_emotions_stages)) {
 
@@ -1614,5 +1508,5 @@ for (stage in names(plots_emotions_stages)) {
 
 }
 ```
-10.3
+## 10.3.
 ```{r}
