@@ -62,6 +62,17 @@ positive_feelings <- c(
 )
 negative_feelings <- c("sadness", "guilt", "regret" ,"shame", 
                        "disappointment" , "fear", "disgust", "contempt" , "hate","anger")
+
+original_order = c(
+  "Project genesis/ first thoughts/ idea creation",
+  "Reality check",
+  "Preparations",
+  "Data collection",
+  "Data analysis",
+  "Report writing",
+  "Revisions",
+  "Waiting",
+  "Post-project stage")
 ```
 
 ```{r}
@@ -444,20 +455,34 @@ great_sd <- sd_flag %>%
 ## 2.1. Intensity of specific emotions across research stages - version A
 ```{r}
 color_vector = c(
-  "Data analysis" = "#02452B", 
-  "Data collection" = "#84CDF0", 
-  "Post-project stage" = "#75069D",
-  "Preparations" = "#2b4a78", 
-  "Waiting" = "#9D3B06", 
-  "Project genesis/ first thoughts/ idea creation" = "#B5E6D0",
-  "Report writing" = "#E7C582", 
-  "Reality check" = "#FFBF65",
-  "Revisions" = "#c6a1f9"
-)
+  "Project genesis" = "#750600",
+  "Reality check" = "#D15B00",
+  "Preparations" = "#D1B200",
+  "Data collection" = "#007519",
+  "Data analysis" = "#00A393",
+  "Report writing" = "#005ED6",
+  "Revisions" = "#2b4a78",
+  "Waiting" = "#892EFF",
+  "Post-project stage" = "#75069D")
+
+original_order = c(
+  "Project genesis",
+  "Reality check",
+  "Preparations",
+  "Data collection",
+  "Data analysis",
+  "Report writing",
+  "Revisions",
+  "Waiting",
+  "Post-project stage")
 
 plots_emotions_stages = list()
 
-for (stage in unique(na.omit(data_recoded$research_stage))) {
+data_recoded <- data_recoded %>% 
+  mutate(
+    research_stage = factor(research_stage, levels = original_order))
+
+for (stage in levels(na.omit(data_recoded$research_stage))) {
   stage_data <- data_recoded %>% 
     filter(research_stage == stage) %>% 
     analysis_select() %>% 
@@ -505,6 +530,42 @@ for (stage in unique(na.omit(data_recoded$research_stage))) {
 plots_emotions_stages
 plots_heatmap_stages
 ```
+
+## 2.1. Combining the overall intensity and heatmap plots into an animated plot: using magick
+```{r}
+# 1. overall emotional intensity 
+imgs_overall <- lapply(plots_emotions_stages, function(single_overall_plot) {
+  img_overall <- magick::image_graph(width = 800, height = 600, res = 96) ## saving the plots as magick images
+  print(single_overall_plot)
+  dev.off()
+  img_overall
+})
+
+## animate plots into one object
+animation_overall <- magick::image_animate(
+  magick::image_join(imgs_overall), 
+  fps = 1
+)
+
+## save overall emotional plots
+image_write(animation_overall, "emotions_stages_animation.gif", format = "gif")
+
+# 2. heatmaps 
+imgs_heatmap <- lapply(plots_heatmap_stages, function(single_heatmap) {
+  img_heatmap <- magick::image_graph(width = 800, height = 600, res = 96)
+  print(single_heatmap)
+  dev.off()
+  img_heatmap
+})
+
+animation_heatmap <- magick::image_animate(
+  magick::image_join(imgs_heatmap), 
+  fps = 1
+)
+
+animation_heatmap
+```
+
 
 ## 2.2. Intensity of specific emotions across research stages - version B
 ```{r}
@@ -623,6 +684,7 @@ post_project2 <- post_project %>%
     Q22 == "Accepted but not yet published"
   ) %>% 
   select(-Q22_6_TEXT)
+
 
 post_project2_long <- post_project2 %>% 
   longer_heatmap() %>% 
@@ -746,7 +808,7 @@ na_all %>%
 
 ```
 
-2.7 Overall emotional landscape across research stages
+## 2.7 Overall emotional landscape across research stages
 ```{r}
 research_stage_emotions = data_recoded %>% 
   select(research_stage, all_of(feeling_cols)) %>% 
@@ -805,7 +867,7 @@ research_stage_pos
 combined_research_stage
 ```
 
-2.8 Emotional landscape across research stages in chronological order
+## 2.8 Emotional landscape across research stages in chronological order
 ```{r}
 
 original_order = c(
@@ -1073,7 +1135,7 @@ age_positive <- positive_means %>%
   pos_neg_classify()
 
 ## creating age groups
-age_positive_counts <- age_negative %>% 
+age_positive_counts <- age_positive %>% 
   age_grouping() %>% 
   droplevels()
 
@@ -1605,3 +1667,5 @@ for (stage in names(plots_emotions_stages)) {
 
 }
 ```
+
+
