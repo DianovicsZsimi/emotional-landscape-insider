@@ -1556,11 +1556,57 @@ country_emotions_min10 = country_emotions_clean %>%
   filter(n() >= 10) %>% 
   ungroup() 
 
+min10_pos = country_emotions_clean_pos %>% 
+  mutate(country = factor(country)) %>% 
+  group_by(country) %>% 
+  filter(n() >= 10) %>% 
+  ungroup() 
+
+min10_neg = country_emotions_clean_neg %>% 
+  mutate(country = factor(country)) %>% 
+  group_by(country) %>% 
+  filter(n() >= 10) %>% 
+  ungroup() 
+
 min10_emotions = emotion_function(country_emotions_min10, country)
 min10_mean = mean_function(min10_emotions, country)
 
+min10_emotions_positive = emotion_function(min10_pos, country)
+
+min10_emotions_mean_positive = mean_function(min10_emotions_positive, country)
+
+min10_emotions_negative = emotion_function(min10_neg, country)
+
+min10_emotions_mean_negative = mean_function(min10_emotions_negative, country)
+
+
+min10_pos_plot = overall_emotion_plot_valence(
+  min10_emotions_mean_positive,
+  country,
+  mean_emotion,
+  color_low = "orange",
+  color_high = "red",
+  "Positive Emotions"
+)
+
+min10_neg_plot = overall_emotion_plot_valence(
+  min10_emotions_mean_negative,
+  country,
+  mean_emotion,
+  color_low = "lightblue",
+  color_high = "blue",
+  "Negative Emotions"
+)
+
+
+
 min10_plot = overall_emotion_plot(min10_mean, country, mean_emotion, "Overall Emotional Landscape in Countries with at least 10 Respondents")
 min10_plot
+
+min10_comb = min10_pos_plot + min10_neg_plot
+min10_comb
+
+
 ```
 
 
