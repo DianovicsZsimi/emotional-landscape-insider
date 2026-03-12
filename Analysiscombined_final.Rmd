@@ -22,6 +22,9 @@ if (!require("magrittr")) install.packages("magrittr")
 if (!require("apyramid")) install.packages("apyramid")
 if (!require("rlang")) install.packages("rlang")
 if (!require("maps")) install.packages("maps")
+if (!require("gganimate")) install.packages("gganimate")
+
+
 
 library(tidyverse)
 library(ggplot2)
@@ -36,6 +39,7 @@ library(magrittr)
 library(apyramid)
 library(rlang)
 library(maps)
+library(gganimate)
 ```
 
 
@@ -95,7 +99,9 @@ data_recoded = data_clean %>%
                                    "Preparations",
                                  "Reality check (e.g., literature search, consultation with colleagues)" =
                                    "Reality check",
-                                 "Waiting for journal's response and revisions" = "Waiting")) %>% 
+                                 "Waiting for journal's response and revisions" = "Waiting",
+                                 "Project genesis/ first thoughts/ idea creation" = "Project genesis"
+                                 )) %>% 
   mutate(across(all_of(feeling_cols),
                 ~ as.numeric(as.character(.x)))) %>% 
   mutate(feeling_general_1 = as.numeric(as.character(feeling_general_1))) %>% 
@@ -104,7 +110,7 @@ data_recoded = data_clean %>%
   mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
   mutate(NAcount = rowSums(is.na(across(interest:anger)))) %>%
   mutate(NAcountpos = rowSums(is.na(across(interest:compassion)))) %>% 
-  mutate(NAcountneg = rowSums(is.na(across(sadness:anger))))
+  mutate(NAcountneg = rowSums(is.na(across(sadness:anger)))) 
 
 
 country_emotions = data_recoded %>%  
@@ -803,7 +809,7 @@ combined_research_stage
 ```{r}
 
 original_order = c(
-  "Project genesis/ first thoughts/ idea creation",
+  "Project genesis",
   "Reality check",
   "Preparations",
   "Data collection",
@@ -813,45 +819,52 @@ original_order = c(
   "Waiting",
   "Post-project stage")
 
-research_stage_emotions_chron = research_stage_emotions_mean %>%
-  mutate(research_stage = factor(research_stage, levels = original_order)) %>%
-  arrange(research_stage)
 
-research_stage_emotions_chron %>% 
-  ggplot(aes(x = research_stage, y = mean_emotion, group = 1, color = mean_emotion)) +
-  geom_line()+
-  geom_point(size = 3) +
-   theme_tufte()+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-research_stage_emotions_chron_pos = research_stage_emotions_mean_positive %>% 
-  mutate(research_stage = factor(research_stage, levels = original_order)) %>%
-  arrange(research_stage)
+research_stage_emotion_chron1 =
+  left_join(
+    research_stage_emotions_mean_positive,
+    research_stage_emotions_mean_negative,
+    by = "research_stage"
+  ) %>%
+  rename(
+    mean_emotion_pos = mean_emotion.x,
+    mean_emotion_neg = mean_emotion.y
+  )
 
-chron_pos_plot = research_stage_emotions_chron_pos %>% 
-  ggplot(aes(x = research_stage, y = mean_emotion, group = 1, color = mean_emotion)) +
-  labs(title = "Positive Emotions")+
+chron_long <- research_stage_emotion_chron1 %>%
+  pivot_longer(
+    cols = c(mean_emotion_pos, mean_emotion_neg),
+    names_to = "valence",
+    values_to = "mean_emotion"
+  ) %>% 
+  mutate(research_stage = factor(research_stage, levels = original_order))
+
+
+
+chron_plot <- chron_long %>%
+  ggplot(aes(x = research_stage,
+             y = mean_emotion,
+             color = valence,
+             group = valence)) +
   geom_line() +
   geom_point(size = 3) +
-   scale_color_gradient(low = "orange", high = "red")+
-   theme_tufte()+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  scale_color_manual(
+    values = c(
+      mean_emotion_pos = "red",
+      mean_emotion_neg = "blue"
+    )
+  ) +
+  labs(title = "Positive vs Negative Emotions") +
+  theme_tufte() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+ 
+  scale_y_continuous(
+  limits = c(0, 7),
+  breaks = 0:7
+)
 
-research_stage_emotions_chron_neg = research_stage_emotions_mean_negative %>% 
-  mutate(research_stage = factor(research_stage, levels = original_order)) %>%
-  arrange(research_stage)
 
-chron_neg_plot = research_stage_emotions_chron_neg %>% 
-  ggplot(aes(x = research_stage, y = mean_emotion, group = 1, color = mean_emotion)) +
-  labs(title = "Negative Emotions")+
-  geom_line() +
-  geom_point(size = 3) +
-   scale_color_gradient(low = "lightblue", high = "darkblue")+
-   theme_tufte()+
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-chron_comb = chron_neg_plot + chron_pos_plot
-chron_comb
+chron_plot  
 ```
 
 ## 2.9.  NA values in emotions across research stages
@@ -1584,7 +1597,7 @@ for (stage in names(plots_heatmap_stages)) {
 for (stage in names(plots_emotions_stages)) {
 
   ggsave(
-    filename = paste0("heatmap_", gsub("[^A-Za-z0-9]", "_", stage), ".png"),
+    filename = paste0("across_", gsub("[^A-Za-z0-9]", "_", stage), ".png"),
     plot = plots_emotions_stages[[stage]],
     width = 8,
     height = 6
