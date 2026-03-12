@@ -23,6 +23,8 @@ if (!require("apyramid")) install.packages("apyramid")
 if (!require("rlang")) install.packages("rlang")
 if (!require("maps")) install.packages("maps")
 if (!require("gganimate")) install.packages("gganimate")
+if (!require("magick")) install.packages("magick")
+
 
 
 
@@ -40,6 +42,7 @@ library(apyramid)
 library(rlang)
 library(maps)
 library(gganimate)
+library(magick)
 ```
 
 
@@ -535,15 +538,15 @@ plots_heatmap_stages
 ```{r}
 # 1. overall emotional intensity 
 imgs_overall <- lapply(plots_emotions_stages, function(single_overall_plot) {
-  img_overall <- magick::image_graph(width = 800, height = 600, res = 96) ## saving the plots as magick images
+  img_overall <- image_graph(width = 800, height = 600, res = 96) ## saving the plots as magick images
   print(single_overall_plot)
   dev.off()
   img_overall
 })
 
 ## animate plots into one object
-animation_overall <- magick::image_animate(
-  magick::image_join(imgs_overall), 
+animation_overall <- image_animate(
+  image_join(imgs_overall), 
   fps = 1
 )
 
@@ -552,14 +555,14 @@ image_write(animation_overall, "emotions_stages_animation.gif", format = "gif")
 
 # 2. heatmaps 
 imgs_heatmap <- lapply(plots_heatmap_stages, function(single_heatmap) {
-  img_heatmap <- magick::image_graph(width = 800, height = 600, res = 96)
+  img_heatmap <- image_graph(width = 800, height = 600, res = 96)
   print(single_heatmap)
   dev.off()
   img_heatmap
 })
 
-animation_heatmap <- magick::image_animate(
-  magick::image_join(imgs_heatmap), 
+animation_heatmap <- image_animate(
+  image_join(imgs_heatmap), 
   fps = 1
 )
 
