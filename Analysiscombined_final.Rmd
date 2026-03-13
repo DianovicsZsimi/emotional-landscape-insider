@@ -573,7 +573,7 @@ animation_heatmap
 ## 2.2. Intensity of specific emotions across research stages - version B
 ```{r}
 original_order = c(
-  "Project genesis/ first thoughts/ idea creation",
+  "Project genesis",
   "Reality check",
   "Preparations",
   "Data collection",
@@ -598,11 +598,15 @@ for (feeling in feeling_cols) {
     select(all_of(c(feeling, "research_stage"))) %>% 
     filter(!is.na(.data[[feeling]])) %>%
     group_by(research_stage) %>%
-    mutate(research_stage = factor(research_stage, levels = original_order))
+    mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
+    summarise(mean_feeling = mean(.data[[feeling]]))
+    #rename(mean.data[[feeling]] = mean[[feeling]])
+    
 
   plots_specfeeling[[feeling]] <- feeling_distribution %>% 
-    ggplot(aes(x = research_stage, y = .data[[feeling]])) +
-    geom_col(fill = "#B5E6D0", na.rm = TRUE) +
+    ggplot(aes(x = research_stage, y = mean_feeling )) +
+    geom_col(fill = "lightgreen", na.rm = TRUE) +
+    scale_y_continuous(limits = c(0, 7))+
     labs(
       title = paste("Intensity of", feeling, "through the research stages")) +
     theme(
@@ -648,7 +652,7 @@ all_distribution %>%
     theme(
       axis.text.x = element_text(angle = 
                                    45, vjust = 1, hjust = 1, size = 6)) +
-  facet_wrap(~ emotion, nrow = 3) 
+  facet_wrap(~ emotion, nrow = 4) 
 
 
 ```
