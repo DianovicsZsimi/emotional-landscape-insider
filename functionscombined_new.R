@@ -67,38 +67,34 @@ plot_overall = function(df) {
       axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 }
 
-### 3. Functions for the the descriptive statistics of people with neg_avg > pos_avg, and pos_avg > neg_avg
-## prepares df for piecharts
-categories_prepare = function(df) {
+### Piechart plot replacement: barchart 
+## selecting relevant columns, averaging data, long format, minimal filtering 
+barchart_prepare = function(df) {
   df %>% 
-    filter(
-      !is.na(category)
-    ) %>% 
-    select(ResponseId, category) %>% 
+    filter(!(is.na(category)), 
+           !(is.na(pos_mean)), 
+           !(is.na(neg_mean))) %>% 
+    arrange(category) %>% 
     group_by(category) %>% 
-    summarise(n = n()) %>% ## counts each category and puts it into n columns
-    mutate(
-      perc = n / sum(n) * 100
-    ) ## percentage of each position 
-}
-
-## piechart plot
-piechart_plot = function(df, legend_name) {
-  ggplot(df, aes(x = "", y = n, fill = category)) +
-    geom_bar(stat = "identity", width = 1) +
-    coord_polar("y", start = 0) +
-    geom_text(aes(label = paste0(round(perc), "%")), 
-              position = position_stack(vjust = 0.25), 
-              size = 3.5) +
-    scale_fill_manual(
-      name = legend_name, 
-      values = c("#ff6600", "#ffcc00", "#99cc00", "#009933", "#66ccff", "#6699ff", "#9966ff", "#ff66cc", "#ffccff")) +
-    theme(
-      legend.text = element_text(size = 8),
-      legend.title = element_text(size = 9),
-      legend.key.size = unit(0.4, "cm")
+    summarise(
+      positive_mean = mean(pos_mean), 
+      negative_mean = mean(neg_mean)
+    ) %>% 
+    pivot_longer(
+      cols = c(positive_mean, negative_mean), 
+      names_to = "pos_neg", 
+      values_to = "mean_value"
     )
 }
+
+## the barchart plot
+barchart_comparison <- function(df, category) {
+  ggplot(df, aes(x = category, y = mean_value, fill = pos_neg)) +
+    geom_col() +
+    scale_fill_manual(values = c("positive_mean" = "#ad0c24", "negative_mean" = "#124fb3"), 
+                      labels = c("positive_mean" = "Positive", "negative_mean" = "Negative"), 
+                      name = "Emotional valence") 
+} 
 
 ## classifying the columns
 pos_neg_classify = function(df) {
