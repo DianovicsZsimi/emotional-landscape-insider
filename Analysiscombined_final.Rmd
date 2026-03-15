@@ -193,7 +193,7 @@ country_emotions_clean <- country_emotions_clean %>%
       country %in% c("Algeria", "Burkina Faso", "Egypt", 
                      "Mali", "South Africa", "Sudan") ~ "Africa",
       country %in% c("Argentina", "Brazil", "Chile", "Costa Rica", 
-                     "Colombia") ~ "South America/ Central America",
+                     "Colombia") ~ "South America and Central America",
       country %in% c("Canada", "Mexico", 
                      "USA") ~ "North America",
       country %in% c("Austria", "Belgium", "Croatia", "Czech Republic",
@@ -210,13 +210,14 @@ country_emotions_clean <- country_emotions_clean %>%
       country == "Turkey" ~ "Europe", 
       country %in% c("Australia", "New Zealand") ~ "Oceania", TRUE ~ NA_character_))
 
-
-country_emotions_clean = country_emotions_clean %>% 
+country_emotions_clean = country_emotions_clean%>%  
   mutate(country = factor(country)) %>% 
    mutate(across(sadness:anger, ~ 8 - .x)) %>% 
-   mutate(mean_feeling = rowMeans(across(interest:compassion), na.rm = TRUE))
-
-
+  mutate(mean_feeling = rowMeans(across(interest:anger), na.rm = TRUE)) %>% 
+   mutate(NAcount = rowSums(is.na(across(interest:anger)))) %>%
+  mutate(NAcountpos = rowSums(is.na(across(interest:compassion)))) %>% 
+  mutate(NAcountneg = rowSums(is.na(across(sadness:anger)))) %>% 
+  filter(!(is.nan(mean_feeling)))
 
 country_emotions_clean_pos = country_emotions_clean %>% 
   select(ResponseId, country, continent, all_of(positive_feelings)) %>% 
@@ -905,7 +906,7 @@ research_stage_neg = overall_emotion_plot_valence(
   "Negative Emotions"
 )
 
-overall_emotion_plot(
+overall_research_stage = overall_emotion_plot(
   research_stage_emotions_mean,
   research_stage,
   mean_emotion,
@@ -1428,7 +1429,7 @@ combined_emotions <- bind_rows(
 # 8. Country, regions
 ## 8.1. Overall emotional landscape region-wise
 ```{r}
-continents <- c("Europe", "Africa", "Asia", "North America", "South America/ Central America", "Oceania")
+continents <- c("Europe", "Africa", "Asia", "North America", "South America and Central America", "Oceania")
 
 
 continent_results <- list()
@@ -1470,6 +1471,7 @@ for (cont in continents) {
     title_text = paste("Positive Emotions in", cont))}
 continent_plots_pos
 
+
 ```
 
 
@@ -1497,9 +1499,9 @@ continent_plots_neg
 
 ## 8.4. Combined plots
 ```{r}
-combined_plots = Map(`+`, continent_plots_pos, continent_plots_neg) #The map goes through the two vectors in parallel --> given they contain plots, the combined plots are this easy to create
+combined_plots_country = Map(`+`, continent_plots_pos, continent_plots_neg) #The map goes through the two vectors in parallel --> given they contain plots, the combined plots are this easy to create
 
-combined_plots
+combined_plots_country
 ```
 
 
@@ -1524,7 +1526,7 @@ country_11_groups <- country_emotions_clean %>%
     n = n(),   # optional, but nice to keep
     .groups = "drop")
 
-country_11_groups %>% 
+top_10_plot = country_11_groups %>% 
   mutate(dev = mean_emotion - 4) %>% 
   arrange(desc(n)) %>%   # arrange by frequency
   ggplot(aes(
@@ -1546,6 +1548,8 @@ country_11_groups %>%
     plot.title  = element_text(hjust = 0.5, face = "bold"),
     legend.position = "none")+
   theme(axis.ticks.y = element_blank())
+
+top_10_plot
 ```
 
 
@@ -1607,7 +1611,9 @@ min10_plot
 min10_comb = min10_pos_plot + min10_neg_plot
 min10_comb
 
-
+min_10_plots = list("min_10_neg_plot" = min10_neg_plot, "min_10_pos_plo2" = min10_pos_plot, 
+                    "min10_plot" = min10_plot, "min10_comb" = min10_comb)
+min_10_plots
 ```
 
 
@@ -1653,7 +1659,7 @@ attribution_counts_general <- df_feeling_general %>%
   mutate(prop = n / sum(n)) %>%
   arrange(prop)
 
-ggplot(attribution_counts_general,
+attribution_general = ggplot(attribution_counts_general,
        aes(x = reorder(attribution_category, prop),
            y = prop)) +
   geom_col(width = 0.6) +
@@ -1669,7 +1675,7 @@ valence_counts_general <- df_feeling_general %>%
   mutate(prop = n / sum(n)) %>%
   ungroup()
 
-ggplot(valence_counts_general,
+attribution_valence = ggplot(valence_counts_general,
        aes(x = reorder(attribution_category, prop),
            y = prop,
            fill = valence)) +
@@ -1686,6 +1692,7 @@ ggplot(valence_counts_general,
     y = "Proportion within Valence"
   ) +
   theme_minimal(base_size = 13)
+attribution_plots = list("attribution_general" = attribution_general, "attribution_valence" = attribution_valence)
 ```
 
 # 10. Saving plots
@@ -1705,7 +1712,7 @@ for (plots in names(descriptive_plots)) {
 
 ```
 
-## 10.2. Research stage heatmaps
+## 10.2. Research stage
 ```{r}
 for (stage in names(plots_heatmap_stages)) {
 
@@ -1717,10 +1724,8 @@ for (stage in names(plots_heatmap_stages)) {
   )
 
 } 
-```
 
-## 10.3. Emotions across stages
-```{r}
+
 for (stage in names(plots_emotions_stages)) {
 
   ggsave(
@@ -1731,7 +1736,35 @@ for (stage in names(plots_emotions_stages)) {
   )
 
 }
+
+research_stage_others = list("research_stage_pos" = research_stage_pos, "research_stage_neg" = research_stage_neg, "overall_research_stage" = overall_research_stage, "chron_research_stage" = chron_plot, "div_research_stage" = div_research_stage)
+
+for (plots in names(research_stage_others)) {
+  ggsave(
+    filename = paste0(plots, ".png"),
+    plot = research_stage_others[[plots]],
+    width = 10,
+    height = 6, 
+    bg = "white"
+  )
+}
+
 ```
+
+
+## 10.3 Attribution plots
+```{r}
+for (plots in names(attribution_plots)) {
+  ggsave(
+    filename = paste0(plots, ".png"),
+    plot = attribution_plots[[plots]],
+    width = 10,
+    height = 6, 
+    bg = "white"
+  )
+}
+```
+
 
 ## 10.4 Gender plots
 ```{r}
@@ -1756,7 +1789,8 @@ for (plots in names(category_of_work_plots)) {
     filename = paste0(plots, ".png"),
     plot = category_of_work_plots[[plots]],
     width = 10,
-    height = 6
+    height = 6, 
+    bg = "white"
   )
 }
 ```
@@ -1769,7 +1803,8 @@ for (plots in names(area_plots)) {
   ggsave(filename = paste0(plots, ".png"), 
          plot = area_plots[[plots]], 
          width = 10, 
-         height = 6 )}
+         height = 6 , 
+         bg = "white")}
 ```
 
 ## 10.7 Position
@@ -1788,4 +1823,63 @@ for (plots in names(position_plots)) {
     height = 6
   )
 }
+```
+## 10.8 country
+```{r}
+#country_plots = list("top_10_plot" = top_10_plot min_10_plots, continent_plots, continent_plots_pos, continent_plots_neg, combined_plots_country)
+names(combined_plots_country)
 
+for(plots in names(min_10_plots)){
+  ggsave(
+    filename = paste0(plots, ".png"),
+    plot = min_10_plots[[plots]],
+    width = 10,
+    height = 6, 
+    bg = "white"
+  )
+}
+
+for(plots in names(continent_plots)){
+  ggsave(
+    filename = paste0(plots, ".png"),
+    plot = continent_plots[[plots]],
+    width = 10,
+    height = 6, 
+    bg = "white"
+  )
+}
+
+for(plots in names(continent_plots_pos)){
+  ggsave(
+    filename = paste0("positive_",plots, ".png"),
+    plot = continent_plots_pos[[plots]],
+    width = 10,
+    height = 6, 
+    bg = "white"
+  )
+}
+
+for(plots in names(continent_plots_neg)){
+  ggsave(
+    filename = paste0("negative_",plots, ".png"),
+    plot = continent_plots_neg[[plots]],
+    width = 10,
+    height = 6, 
+    bg = "white"
+  )
+}
+
+for(plots in names(combined_plots_country)){
+  ggsave(
+    filename = paste0("combined_",plots, ".png"),
+    plot = combined_plots_country[[plots]],
+    width = 12,
+    height = 6, 
+    bg = "white"
+  )
+}
+
+ggsave("top_10_plot.png", plot = top_10_plot, height = 6, width = 10, bg = "white")
+
+
+```
