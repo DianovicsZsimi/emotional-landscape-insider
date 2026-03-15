@@ -456,7 +456,6 @@ great_sd <- sd_flag %>%
   )
 ```
 
-
 # 2. Research stage
 
 ## 2.1. Intensity of specific emotions across research stages - version A
@@ -763,7 +762,7 @@ ggplot(overall_long, aes(x = emotion, y = mean_intensity, fill = intensity)) +
 ```
 
 
-## 2.6. Na values in specific emotions across research stages
+## 2.6. NA values in specific emotions across research stages
 ```{r}
 ## df for counting NA values by research stage
 na_counter <- data_recoded %>% 
@@ -818,6 +817,31 @@ na_all %>%
       title = "NA values in the research stages")
 
 ```
+## NA values by emotions
+```{r}
+na_emotions <- na_counter %>% 
+  pivot_longer(
+    cols = -research_stage, 
+    names_to = "emotion", 
+    values_to = "na_count"
+  ) %>% 
+  mutate(emotion = factor(emotion, levels = unique(emotion))) %>% 
+  group_by(emotion) %>% 
+  summarise(na_count = sum(na_count, na.rm = T))
+  
+na_emotions_plot <- na_emotions %>% 
+  ggplot(aes(x = emotion, y = na_count)) +
+  geom_col(fill = "#917167") +
+  theme(
+    axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1
+  )) +
+  labs(
+    title = "NA values by each emotion"
+  )
+
+na_emotions_plot
+```
+
 
 ## 2.7 Overall emotional landscape across research stages
 ```{r}
