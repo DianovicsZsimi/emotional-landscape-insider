@@ -47,7 +47,7 @@ library(magick)
 # 0. Data cleaning, data wrangling
 ```{r}
 # Updated data loading with checks for missing data handling
-source("functionscombined_new.R")
+source ("functionscombined_new.R")
 raw_data <- read.csv("raw_data.csv", na.strings = c("", "NA", "NaN"))
 
 # Changed to data_clean for easier handling for next wrangling
@@ -213,8 +213,8 @@ country_emotions_clean <- country_emotions_clean %>%
 
 country_emotions_clean = country_emotions_clean %>% 
   mutate(country = factor(country)) %>% 
-   mutate(mean_feeling = rowMeans(across(interest:compassion), na.rm = TRUE)) %>% 
-  mutate(across(sadness:anger, ~ 8 - .x))
+   mutate(across(sadness:anger, ~ 8 - .x)) %>% 
+   mutate(mean_feeling = rowMeans(across(interest:compassion), na.rm = TRUE))
 
 
 
@@ -269,7 +269,8 @@ positive_means <- averages_data %>%
 data_recoded$Status <- ifelse(data_recoded$Finished,
                          "Completed",
                          "Not Completed")
-plot_distribution_categorical(data_recoded, "Status", "Questionnaire Completion")
+descriptive_plot1 = plot_distribution_categorical(data_recoded, "Status", "Questionnaire Completion")
+descriptive_plot1
 ```
 
 ## 1.1. Distributions
@@ -277,38 +278,43 @@ plot_distribution_categorical(data_recoded, "Status", "Questionnaire Completion"
 ```{r}
 # The plot is hard to read, I suggest cleaning the labels
 
-plot_distribution_categorical(
+descriptive_plot2 = plot_distribution_categorical(
   data_recoded,
   "gender",
   "Participant Gender Distribution",
   custom_levels = c(
     "Man",
     "Woman"))
+descriptive_plot2
 ```
 
 ### Research area distribution
 ```{r}
-plot_distribution_categorical(data_recoded, "area", "Participants by Research Area")
+descriptive_plot3 = plot_distribution_categorical(data_recoded, "area", "Participants by Research Area")
+descriptive_plot3
 ```
 
 ### Research stage distribution
 ```{r}
-plot_distribution_categorical(
+descriptive_plot4 = plot_distribution_categorical(
   data_recoded,
   "research_stage",
   "Participants by Research Stage",
   remove_parentheses = TRUE
 )
+descriptive_plot4
 ```
 
 ### Position distribution
 ```{r}
-plot_distribution_categorical(data_recoded, "position", "Participants by Position")
+descriptive_plot5 = plot_distribution_categorical(data_recoded, "position", "Participants by Position")
+descriptive_plot5 
 ```
 
 ### Work distribution
 ```{r}
-plot_distribution_categorical(data_recoded, "category_of_work", "Participants by Category of Work")
+descriptive_plot6 = plot_distribution_categorical(data_recoded, "category_of_work", "Participants by Category of Work")
+descriptive_plot6
 ```
 
 
@@ -320,7 +326,7 @@ df_age <- data_recoded %>%
   ) %>%
   filter(!is.na(age))
 
-ggplot(df_age, aes(x = age)) +
+descriptive_plot7 = ggplot(df_age, aes(x = age)) +
   geom_histogram(binwidth = 1, color = "white") +
   scale_x_continuous(breaks = seq(20, 100, by = 10)) +
   scale_y_continuous(breaks = seq(0, 50, by = 5)) +
@@ -330,6 +336,7 @@ ggplot(df_age, aes(x = age)) +
     y = "Number of Participants"
   ) +
   theme_minimal (base_size = 14)
+descriptive_plot7
 
 mean_age <- mean(df_age$age)
 sd_age <- sd(df_age$age)
@@ -363,7 +370,7 @@ sd_progress   <- sd(df_dropout$Progress, na.rm = TRUE)
 mean_progress
 sd_progress
 
-ggplot(df_dropout_counts, aes(x = Progress, y = n)) +
+descriptive_plot8 = ggplot(df_dropout_counts, aes(x = Progress, y = n)) +
   geom_col(width = 0.6) +
   geom_text(aes(label = n),
             vjust = -0.4,
@@ -379,6 +386,7 @@ ggplot(df_dropout_counts, aes(x = Progress, y = n)) +
     axis.title = element_text(),
     axis.text.x = element_text()
   )
+descriptive_plot8
 
 ```
 
@@ -400,7 +408,7 @@ world_map <- map_data("world") %>%
 
 world_data <- left_join(world_map, df_country_map, by = c("region" = "country"))
 
-ggplot(world_data, aes(x = long, y = lat, group = group)) +
+descriptive_plotmap = ggplot(world_data, aes(x = long, y = lat, group = group)) +
   geom_polygon(aes(fill = n), color = "white", linewidth = 0.1) +
   scale_fill_gradient(
     low = "#deebf7",
@@ -418,6 +426,7 @@ ggplot(world_data, aes(x = long, y = lat, group = group)) +
     axis.title = element_blank(),
     panel.grid = element_blank()
 )
+descriptive_plotmap
 ```
 
 ```{r}
@@ -646,7 +655,7 @@ all_distribution <- data_recoded %>%
     emotion = factor(emotion, levels = feeling_cols)
   )
 
-all_distribution %>% 
+all_distribution_plot = all_distribution %>% 
   ggplot(aes(x = research_stage, y = intensity)) +
   geom_col(fill = "#84CDF0", na.rm = T
     ) +
@@ -656,6 +665,7 @@ all_distribution %>%
       axis.text.x = element_text(angle = 
                                    45, vjust = 1, hjust = 1, size = 6)) +
   facet_wrap(~ emotion, nrow = 4) 
+all_distribution_plot
 
 
 ```
@@ -799,14 +809,18 @@ na_all <- na_counter %>%
     cols = -research_stage, 
     names_to = "emotion", 
     values_to = "na_count"
-  )
+  ) 
+na_prop <- na_all %>%
+  group_by(research_stage) %>%
+  mutate(prop_na = na_count / sum(na_count),
+         percent_na = 100 * prop_na)
+
 
 ## -> Barchart for all stages
-na_all %>% 
+na_prop %>% 
   mutate(emotion = factor(emotion, levels = unique(emotion))) %>%
-  mutate(research_stage = factor(research_stage, levels = c("Project genesis/ first thoughts/ idea creation",
-  "Reality check","Preparations","Data collection","Data analysis","Report writing","Revisions","Waiting","Post-project stage"))) %>% 
-  ggplot(aes(emotion, na_count)) +
+  mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
+  ggplot(aes(emotion, percent_na)) +
   facet_wrap(
     ~ research_stage) +
   geom_bar(stat = "identity", fill = "#8DB5E0") +
@@ -814,7 +828,7 @@ na_all %>%
     axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
     legend.position = "none") +
   labs(
-      title = "NA values in the research stages")
+      title = "Distribution of NA responses between emotions in each group")
 
 ```
 ## NA values by emotions
@@ -857,7 +871,8 @@ research_stage_emotions_negative = research_stage_emotions %>%
 
 research_stage_na = Nacount(data_recoded, research_stage) %>% 
   filter(!(is.na(research_stage)))
-na_prop_diverging_plot(research_stage_na, research_stage, "Proportion of NA's in Positive and Negative Emotions")
+div_research_stage = na_prop_diverging_plot(research_stage_na, research_stage, "Proportion of NA's in Positive and Negative Emotions")
+div_research_stage
 
 research_stage_emotions = emotion_function(research_stage_emotions, research_stage)
 
@@ -975,12 +990,15 @@ na_counter_all <- data_recoded %>%
 ```
 
 ## 2.10. Distributions - Barcharts: overall emotional landscape dominated by positive or negative emotions - comparison
+
+## 2.10.1 version
 ```{r}
 stages_barchart <- averages_data %>% 
   select( 
     pos_mean, neg_mean, research_stage
   ) %>% 
   rename(category = research_stage) %>% 
+  mutate(category = factor(category, levels = original_order)) %>% 
   barchart_prepare() ## selecting relevant columns, averaging data, long format, minimal filtering 
 
 ## creating the barchart 
@@ -991,6 +1009,41 @@ stages_barchart %>%
   labs(x = "Research stage", 
        y = "Mean value", 
        title = "Emotional valence within the research stages")
+
+```
+
+## 2.10.2 version
+```{r}
+stages_barchart_prop = stages_barchart %>%
+  mutate(mean_plot = ifelse(pos_neg == "negative_mean", -mean_value, mean_value))
+
+stages_barchart_prop %>% 
+  ggplot(aes(x = category, y = mean_plot, fill = pos_neg)) +
+  geom_col() +
+  geom_hline(yintercept = 0) +
+  scale_fill_manual(values = c("positive_mean" = "darkred", "negative_mean" = "darkblue"))+
+  scale_y_continuous(limits = c(-7,7), 
+                     breaks = c(-7,-4,0,4,7))+
+  theme(axis.text.x = element_text(angle = 45))
+
+```
+
+## 2.10.3 version 
+```{r}
+pos_neg_prop <- stages_barchart %>%
+  group_by(category) %>%
+  mutate(prop = mean_value / sum(mean_value)) %>%
+  ungroup()
+
+pos_neg_prop %>% 
+  ggplot(aes(x = category, y = prop, fill = pos_neg))+
+  geom_col(width = 0.7) +
+  geom_hline(yintercept = 0.5)+
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_fill_manual(values = c("positive_mean" = "red", "negative_mean" = "blue")) +
+  theme_tufte() +
+  labs(y = "Proportion of total emotional intensity", x = "") +
+  coord_flip()
 ```
 
 # 3. Gender
@@ -1079,7 +1132,8 @@ gender_emotions_negative = gender_emotions %>%
 
 gender_na = Nacount(data_recoded, gender) %>% 
   filter(!(gender %in% c(NA, "Non-binary / third gender / gender non-conforming", "Prefer not to say")))
-na_prop_diverging_plot(gender_na, gender, "Proportion of NA's in Positive and Negative Emotions")
+gender_div = na_prop_diverging_plot(gender_na, gender, "Proportion of NA's in Positive and Negative Emotions")
+gender_div
 
 
 gender_emotions = emotion_function(gender_emotions, gender)
@@ -1101,8 +1155,9 @@ gender_pos = overall_emotion_plot_valence(gender_emotions_mean_positive, gender,
 gender_neg = overall_emotion_plot_valence(gender_emotions_mean_negative, gender, mean_emotion, color_low = "lightblue", 
                      color_high = "blue", "Negative Emotions")
 
-overall_emotion_plot(gender_emotions_mean, gender, mean_emotion,
+overall_gender = overall_emotion_plot(gender_emotions_mean, gender, mean_emotion,
                              "Overall Emotional Landscape by Gender")
+
 combined_gender = gender_pos+gender_neg
 
 combined_gender
@@ -1206,11 +1261,12 @@ area_emotions_negative = area_emotions %>%
 area_na = Nacount(data_recoded, area) %>% 
   filter(!(area == ""))
 
-na_prop_diverging_plot(
+area_div = na_prop_diverging_plot(
   area_na,
   area,
   "Proportion of NA's in Positive and Negative Emotions")
 area_emotions = emotion_function(area_emotions, area)
+area_div
 
 area_emotions_mean = mean_function(area_emotions, area)
 
@@ -1242,12 +1298,13 @@ area_neg = overall_emotion_plot_valence(
 )
 
 
-overall_emotion_plot(
+area_overall = overall_emotion_plot(
   area_emotions_mean,
   area,
   mean_emotion,
   "Overall Emotional Landscape by Area"
 )
+area_overall
 
 combined_area = area_pos + area_neg
 
@@ -1331,12 +1388,13 @@ position_neg = overall_emotion_plot_valence(
 )
 
 
-overall_emotion_plot(
+position_overall = overall_emotion_plot(
   position_emotions_mean,
   position,
   mean_emotion,
   "Overall Emotional Landscape by Position"
 )
+position_overall
 
 position_combined = position_pos + position_neg
 position_combined
@@ -1631,8 +1689,23 @@ ggplot(valence_counts_general,
 ```
 
 # 10. Saving plots
+## 10.1 Descriptive plots 
+```{r}
+descriptive_plots = list("descriptve_plot1" = descriptive_plot1, "descriptive_plots2" = descriptive_plot2, "descriptive_plot3" = descriptive_plot3, "descriptive_plot4" = descriptive_plot4, "descriptive_plot5" = descriptive_plot5, "descriptive_plot6" = descriptive_plot6, "descriptive_plot7" = descriptive_plot7, "descriptive_plot8" =  descriptive_plot8, "descriptive_plotmap" = descriptive_plotmap)
+descriptive_plots
 
-## 10.1. Research stage heatmaps
+for (plots in names(descriptive_plots)) {
+  ggsave(
+    filename = paste0(plots, ".png"),
+    plot = descriptive_plots[[plots]],
+    width = 10,
+    height = 6
+  )
+}
+
+```
+
+## 10.2. Research stage heatmaps
 ```{r}
 for (stage in names(plots_heatmap_stages)) {
 
@@ -1646,7 +1719,7 @@ for (stage in names(plots_heatmap_stages)) {
 } 
 ```
 
-## 10.2. Emotions across stages
+## 10.3. Emotions across stages
 ```{r}
 for (stage in names(plots_emotions_stages)) {
 
@@ -1660,4 +1733,59 @@ for (stage in names(plots_emotions_stages)) {
 }
 ```
 
+## 10.4 Gender plots
+```{r}
+gender_plots = list("gender_div" = gender_div, "gender_neg" = gender_neg, "gender_pos" = gender_pos, "combined_gender" = combined_gender, "overall_gender" = overall_gender)
+
+for (plots in names(gender_plots)) {
+  ggsave(
+    filename = paste0(plots, ".png"),
+    plot = gender_plots[[plots]],
+    width = 10,
+    height = 6
+  )
+}
+```
+
+## 10.5 Category of work
+```{r}
+category_of_work_plots = list()
+
+for (plots in names(category_of_work_plots)) {
+  ggsave(
+    filename = paste0(plots, ".png"),
+    plot = category_of_work_plots[[plots]],
+    width = 10,
+    height = 6
+  )
+}
+```
+
+## 10.6 Area
+```{r}
+area_plots = list("area_div" = area_div, "area_pos" = area_pos, "area_neg" = area_neg, "area_combined" = area_combined, "overall_area" = overall_area) 
+
+for (plots in names(area_plots)) { 
+  ggsave(filename = paste0(plots, ".png"), 
+         plot = area_plots[[plots]], 
+         width = 10, 
+         height = 6 )}
+```
+
+## 10.7 Position
+```{r}
+position_plots = list("position_div" = position_div, 
+                      "position_pos" = position_pos, 
+                      "position_neg" = position_neg, 
+                      "position_combined" = position_combined, 
+                      "overall_position" = overall_position)
+
+for (plots in names(position_plots)) {
+  ggsave(
+    filename = paste0(plots, ".png"),
+    plot = position_plots[[plots]],
+    width = 10,
+    height = 6
+  )
+}
 
