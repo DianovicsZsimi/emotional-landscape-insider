@@ -1031,16 +1031,16 @@ stages_barchart_prop %>%
 
 ## 2.10.3 version 
 ```{r}
-pos_neg_prop <- stages_barchart %>%
+pos_neg_prop_stage <- stages_barchart %>%
   group_by(category) %>%
   mutate(prop = mean_value / sum(mean_value)) %>%
   ungroup()
 
-pos_neg_prop %>% 
+pos_neg_prop_stage %>% 
   ggplot(aes(x = category, y = prop, fill = pos_neg))+
   geom_col(width = 0.7) +
   geom_hline(yintercept = 0.5)+
-  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_y_continuous(labels = percent, limits = c(0, 1)) +
   scale_fill_manual(values = c("positive_mean" = "red", "negative_mean" = "blue")) +
   theme_tufte() +
   labs(y = "Proportion of total emotional intensity", x = "") +
@@ -1425,7 +1425,58 @@ combined_emotions <- bind_rows(
   select(group, category, mean_emotion)
 ```
 
+#### Q
+Bar chart for loop
+```{r}
+work_averages_barchart_prop = work_averages_barchart %>%
+  mutate(mean_plot = ifelse(pos_neg == "negative_mean", -mean_value, mean_value)) %>% 
+  mutate(df = "work")
+area_barchart_prop = area_barchart %>%
+  mutate(mean_plot = ifelse(pos_neg == "negative_mean", -mean_value, mean_value)) %>% 
+  mutate(df = "area")
+position_barchart_prop = position_barchart %>%
+  mutate(mean_plot = ifelse(pos_neg == "negative_mean", -mean_value, mean_value)) %>% 
+  mutate(df = "position")
 
+
+barchart_prop_comb = bind_rows(work_averages_barchart_prop, area_barchart_prop, position_barchart_prop)
+
+bar_chart_prep_list = list(work_averages_barchart_prop, area_barchart_prop, position_barchart_prop)
+bar_chart_prep_list
+bar_chart_prop_list = list()
+
+for (i in seq_along(bar_chart_prep_list)) {
+  bar_chart_prop_list[[i]] = bar_chart_prep_list[[i]] %>% 
+    ggplot(aes(x = category, y = mean_plot, fill = pos_neg)) +
+  geom_col() +
+  geom_hline(yintercept = 0) +
+  scale_fill_manual(values = c("positive_mean" = "darkred", "negative_mean" = "darkblue"))+
+  scale_y_continuous(limits = c(-7,7), 
+                     breaks = c(-7,-4,0,4,7))+
+  theme(axis.text.x = element_text(angle = 45))
+}
+bar_chart_prop_list
+
+pos_neg_prop_list = list()
+for (i in seq_along(bar_chart_prep_list)) {
+ pos_neg_prop_list[[i]] = bar_chart_prep_list[[i]] %>% 
+   group_by(category) %>% 
+    mutate(prop = mean_value/sum(mean_value))
+}
+pos_neg_prop_plots = list()
+for (i in seq_along(pos_neg_prop_list)) {
+  pos_neg_prop_plots[[i]] = pos_neg_prop_list[[i]] %>% 
+    ggplot(aes(x = category, y = prop, fill = pos_neg))+
+  geom_col(width = 0.7) +
+  geom_hline(yintercept = 0.5)+
+  scale_y_continuous(labels = percent, limits = c(0, 1)) +
+  scale_fill_manual(values = c("positive_mean" = "red", "negative_mean" = "blue")) +
+  theme_tufte() +
+  labs(y = "Proportion of total emotional intensity", x = "") +
+  coord_flip()
+}
+pos_neg_prop_plots
+```
 # 8. Country, regions
 ## 8.1. Overall emotional landscape region-wise
 ```{r}
