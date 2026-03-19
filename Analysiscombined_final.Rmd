@@ -833,6 +833,7 @@ na_facetwrap_plot <- ggplot(na_prop, aes(emotion, percent_na)) +
     legend.position = "none") +
   labs(
       title = "Distribution of NA responses between emotions in each group")
+na_facetwrap_plot
 
 ```
 ## NA values by emotions
@@ -1807,7 +1808,7 @@ for (plots in names(research_stage_others)) {
 
 for (plots in names(post_project_plots)) {
   ggsave(
-    filename = paste0("post_project_", plots, ".png"),
+    filename = paste0(plots, ".png"),
     plot = post_project_plots[[plots]],
     width = 10,
     height = 6, 
@@ -1817,7 +1818,7 @@ for (plots in names(post_project_plots)) {
 
 for (plots in names(plots_specfeeling)) {
   ggsave(
-    filename = paste0("spec_emotions", plots, ".png"),
+    filename = paste0("spec_emotions_", plots, ".png"),
     plot = plots_specfeeling[[plots]],
     width = 10,
     height = 6, 
@@ -1836,7 +1837,7 @@ na_plots = list(na_facetwrap_plot = na_facetwrap_plot, na_emotions_plot = na_emo
 
 for (plots in names(na_plots)) {
   ggsave(
-    filename = paste0("na_plot", plots, ".png"),
+    filename = paste0(plots, ".png"),
     plot = na_plots[[plots]],
     width = 10,
     height = 6, 
