@@ -47,3 +47,13 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# Old analysis and function files
+analysis_barbi.R
+analysis_bogi.Rmd
+Analysis_Sanyi_safe.R
+Analysiscombined.R
+functions_bogi.R
+
+
+
