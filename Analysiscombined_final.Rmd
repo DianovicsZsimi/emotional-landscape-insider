@@ -48,7 +48,7 @@ library(magick)
 ```{r}
 # Updated data loading with checks for missing data handling
 source ("functionscombined_new.R")
-raw_data <- read.csv("raw_data.csv", na.strings = c("", "NA", "NaN"))
+raw_data <- read.csv("full_data.csv", na.strings = c("", "NA", "NaN"))
 
 # Changed to data_clean for easier handling for next wrangling
 data_clean = raw_data[-1:-2, ]
@@ -619,7 +619,7 @@ for (feeling in feeling_cols) {
   plots_specfeeling[[feeling]] <- feeling_distribution %>% 
     ggplot(aes(x = research_stage, y = mean_feeling )) +
     geom_col(fill = "lightgreen", na.rm = TRUE) +
-    scale_y_continuous(limits = c(0, 7))+
+    coord_cartesian(ylim = c(1, 7))+
     labs(
       title = paste("Intensity of", feeling, "through the research stages")) +
     theme(
@@ -864,9 +864,10 @@ na_emotions_plot
 
 ## 2.7 Overall emotional landscape across research stages
 ```{r}
-research_stage_emotions = data_recoded %>% 
-  select(research_stage, all_of(feeling_cols)) %>% 
-  filter(!(research_stage == "")) %>% 
+research_stage_emotions = sd_flag%>% 
+  select(research_stage, all_of(feeling_cols), sd_landscape) %>% 
+  filter(!(research_stage == "")) %>%
+  filter(!(sd_landscape < 0)) %>% 
     mutate(across(sadness:anger, ~ 8 - .x))
 research_stage_emotions_positive = research_stage_emotions %>% 
   select(research_stage, all_of(positive_feelings))
@@ -920,6 +921,7 @@ combined_research_stage = research_stage_pos + research_stage_neg
 research_stage_neg 
 research_stage_pos
 combined_research_stage
+overall_research_stage
 ```
 
 ## 2.8 Emotional landscape across research stages in chronological order
