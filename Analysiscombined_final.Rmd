@@ -1007,7 +1007,7 @@ stages_barchart <- averages_data %>%
   barchart_prepare() ## selecting relevant columns, averaging data, long format, minimal filtering 
 
 ## creating the barchart 
-stages_barchart %>% 
+stages_reg_plot = stages_barchart %>% 
   barchart_comparison() +
   theme(
       axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
@@ -1226,7 +1226,7 @@ work_averages_barchart <- averages_data %>%
   rename(category = category_of_work) %>% 
   barchart_prepare() ## selecting relevant columns, averaging data, long format, minimal filtering 
 
-work_averages_barchart %>% 
+work_reg_plot = work_averages_barchart %>% 
   barchart_comparison() +
   labs(x = "Category of work", 
        y = "Mean value", 
@@ -1243,7 +1243,7 @@ area_barchart <- averages_data %>%
   rename(category = area) %>% 
   barchart_prepare() ## selecting relevant columns, averaging data, long format, minimal filtering 
 
-area_barchart %>% 
+area_reg_plot = area_barchart %>% 
   barchart_comparison() +
   labs(x = "Area of research", 
        y = "Mean value", 
@@ -1329,7 +1329,7 @@ position_barchart <- averages_data %>%
   barchart_prepare() ## selecting relevant columns, averaging data, long format, minimal filtering 
 
 ## the barchart - minimal adjustments
-position_barchart %>% 
+position_reg_plot = position_barchart %>% 
   barchart_comparison() +
     theme(
       axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
@@ -1432,6 +1432,9 @@ combined_emotions <- bind_rows(
 #### Q
 Bar chart for loop
 ```{r}
+reg_barcharts = list(stages_reg_plot = stages_reg_plot, position_reg_plot = position_reg_plot, area_reg_plot = area_reg_plot, work_reg_plot = work_reg_plot)
+
+
 work_averages_barchart_prop = work_averages_barchart %>%
   mutate(mean_plot = ifelse(pos_neg == "negative_mean", -mean_value, mean_value)) %>% 
   mutate(df = "work")
@@ -1443,9 +1446,9 @@ position_barchart_prop = position_barchart %>%
   mutate(df = "position")
 
 
-barchart_prop_comb = bind_rows(work_averages_barchart_prop, area_barchart_prop, position_barchart_prop)
+barchart_prop_comb = bind_rows(work_averages_barchart_prop, area_barchart_prop, position_barchart_prop, stages_barchart_prop)
 
-bar_chart_prep_list = list(work_averages_barchart_prop, area_barchart_prop, position_barchart_prop)
+bar_chart_prep_list = list(work_averages_barchart_prop, area_barchart_prop, position_barchart_prop, stages_barchart_prop)
 bar_chart_prep_list
 bar_chart_prop_list = list()
 
@@ -1480,6 +1483,8 @@ for (i in seq_along(pos_neg_prop_list)) {
   coord_flip()
 }
 pos_neg_prop_plots
+
+
 ```
 # 8. Country, regions
 ## 8.1. Overall emotional landscape region-wise
@@ -1751,6 +1756,43 @@ attribution_plots = list("attribution_general" = attribution_general, "attributi
 ```
 
 # 10. Saving plots
+
+## 10.0
+```{r}
+for (plots in names(reg_barcharts)) {
+  ggsave(
+    filename = paste0(plots, ".png"),
+    plot = reg_barcharts[[plots]],
+    width = 10,
+    height = 6, 
+    bg = "white"
+  )
+}
+
+names(bar_chart_prop_list)
+for (i in seq_along(bar_chart_prop_list)) {
+  ggsave(
+    filename = paste0("prop_plot_", i, ".png"),
+    plot = bar_chart_prop_list[[i]],
+    width = 10,
+    height = 6, 
+    bg = "white"
+  )
+}
+
+pos_neg_prop_plots
+
+for (i in seq_along(pos_neg_prop_plots)) {
+  ggsave(
+    filename = paste0("pos_neg_prop",i,  ".png"),
+    plot = pos_neg_prop_plots[[i]],
+    width = 10,
+    height = 6, 
+    bg = "white"
+  )
+}
+
+```
 ## 10.1 Descriptive plots 
 ```{r}
 descriptive_plots = list("descriptve_plot1" = descriptive_plot1, "descriptive_plots2" = descriptive_plot2, "descriptive_plot3" = descriptive_plot3, "descriptive_plot4" = descriptive_plot4, "descriptive_plot5" = descriptive_plot5, "descriptive_plot6" = descriptive_plot6, "descriptive_plot7" = descriptive_plot7, "descriptive_plot8" =  descriptive_plot8, "descriptive_plotmap" = descriptive_plotmap)
@@ -1870,7 +1912,8 @@ for (plots in names(gender_plots)) {
     filename = paste0(plots, ".png"),
     plot = gender_plots[[plots]],
     width = 10,
-    height = 6
+    height = 6, 
+    bg = "white"
   )
 }
 
@@ -1894,7 +1937,7 @@ for (plots in names(category_of_work_plots)) {
 
 ## 10.6 Area
 ```{r}
-area_plots = list("area_div" = area_div, "area_pos" = area_pos, "area_neg" = area_neg, "area_combined" = area_combined, "overall_area" = overall_area) 
+area_plots = list("area_div" = area_div, "area_pos" = area_pos, "area_neg" = area_neg, "combined_area" = combined_area, "area_overall" = area_overall) 
 
 for (plots in names(area_plots)) { 
   ggsave(filename = paste0(plots, ".png"), 
@@ -1906,18 +1949,18 @@ for (plots in names(area_plots)) {
 
 ## 10.7 Position
 ```{r}
-position_plots = list("position_div" = position_div, 
-                      "position_pos" = position_pos, 
+position_plots = list( "position_pos" = position_pos, 
                       "position_neg" = position_neg, 
                       "position_combined" = position_combined, 
-                      "overall_position" = overall_position)
+                      "position_overall" = position_overall)
 
 for (plots in names(position_plots)) {
   ggsave(
     filename = paste0(plots, ".png"),
     plot = position_plots[[plots]],
     width = 10,
-    height = 6
+    height = 6, 
+    bg = "white"
   )
 }
 ```
