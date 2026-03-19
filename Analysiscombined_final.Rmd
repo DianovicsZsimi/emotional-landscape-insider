@@ -692,7 +692,7 @@ post_project1_long <- post_project1 %>%
   sum_analysis()
 
 # geom_col for mean intensity
-post_project1_long %>% 
+post_project1_plot <- post_project1_long %>% 
   plot_overall() + 
   labs(
       title = "Post-project stage: Accepted and published", 
@@ -712,7 +712,7 @@ post_project2_long <- post_project2 %>%
   sum_analysis()
 
 # geom_col for mean intensity
-post_project2_long %>% 
+post_project2_plot <- post_project2_long %>% 
   plot_overall() + 
   labs(
       title = "Post-project stage: Accepted but not yet published", 
@@ -729,11 +729,13 @@ post_project3_long <- post_project3 %>%
   longer_heatmap() %>%
   sum_analysis()
 
-post_project3_long %>% 
+post_project3_plot <- post_project3_long %>% 
   plot_overall() + 
   labs(
       title = "Post-project stage: Rejected", 
       tag = "4.3.")
+
+post_project_plots = list(post_project1_plot = post_project1_plot, post_project2_plot = post_project2_plot, post_project3_plot = post_project3_plot)
 ```
 
 ## 2.5. facet_wrap plot for emotional intensity in all research stages
@@ -820,8 +822,9 @@ na_prop <- na_all %>%
 ## -> Barchart for all stages
 na_prop %>% 
   mutate(emotion = factor(emotion, levels = unique(emotion))) %>%
-  mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
-  ggplot(aes(emotion, percent_na)) +
+  mutate(research_stage = factor(research_stage, levels = original_order))
+
+na_facetwrap_plot <- ggplot(na_prop, aes(emotion, percent_na)) +
   facet_wrap(
     ~ research_stage) +
   geom_bar(stat = "identity", fill = "#8DB5E0") +
@@ -1208,7 +1211,7 @@ positive_age_plot <- pyramid_plot(age_positive_counts) +
 ```{r}
 age_comparisons <- positive_age_plot | negative_age_plot
 
-age_comparisons +
+age_comparison_plot <- age_comparisons +
   plot_annotation(title = "Age distributions")
 ```
 
@@ -1761,6 +1764,8 @@ for (plots in names(descriptive_plots)) {
   )
 }
 
+
+
 ```
 
 ## 10.2. Research stage
@@ -1800,6 +1805,44 @@ for (plots in names(research_stage_others)) {
   )
 }
 
+for (plots in names(post_project_plots)) {
+  ggsave(
+    filename = paste0("post_project_", plots, ".png"),
+    plot = post_project_plots[[plots]],
+    width = 10,
+    height = 6, 
+    bg = "white"
+  )
+}
+
+for (plots in names(plots_specfeeling)) {
+  ggsave(
+    filename = paste0("spec_emotions", plots, ".png"),
+    plot = plots_specfeeling[[plots]],
+    width = 10,
+    height = 6, 
+    bg = "white"
+  )
+}
+
+ggsave("all_distribution_plot.png", plot = all_distribution_plot, height = 6, width = 10, bg = "white")
+
+
+```
+
+## 10.2.5. NA plots
+```{r}
+na_plots = list(na_facetwrap_plot = na_facetwrap_plot, na_emotions_plot = na_emotions_plot)
+
+for (plots in names(na_plots)) {
+  ggsave(
+    filename = paste0("na_plot", plots, ".png"),
+    plot = na_plots[[plots]],
+    width = 10,
+    height = 6, 
+    bg = "white"
+  )
+}
 ```
 
 
@@ -1829,6 +1872,8 @@ for (plots in names(gender_plots)) {
     height = 6
   )
 }
+
+ggsave("age_gender_comparison.png", plot = age_comparison_plot, height = 6, width = 10, bg = "white")
 ```
 
 ## 10.5 Category of work
