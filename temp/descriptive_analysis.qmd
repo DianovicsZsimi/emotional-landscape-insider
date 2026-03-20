@@ -1,0 +1,596 @@
+---
+title: "descriptive_analysis"
+author: "Dominik Dianovics"
+format: html
+---
+
+# Emotional landscape of reesearchers pilot data cleaning
+
+## Descriptive analysis
+
+### Installing packages
+
+```{r echo=FALSE, output=FALSE}
+library(tidyverse)
+library(here)
+library(ggplot2)
+# install.packages("ggnewscale")
+library(ggnewscale)
+# install.packages("scales")
+library(scales)
+data_path <- here("data")
+```
+
+### Importing data
+
+```{r}
+data = read.csv(here::here("data/clean_to_processed_data.csv"))
+```
+
+### Refactoring research stages chronologically
+
+```{r}
+data = data |> 
+  mutate(research_stage = factor(research_stage, levels = c(
+    "Project genesis/ first thoughts/ idea creation",
+    "Reality check (e.g., literature search, consultation with colleagues)",
+    "Preparations (IRB permit, preregistration, experiment preparations)",
+    "Data collection",
+    "Data analysis",
+    "Report writing",
+    "Waiting for journal's response and revisions",
+    "Revisions",
+    "Post-project stage (the project has received a decision (accepted or rejected). At this point, it is either concluded or being revised and prepared for submission to another venue)"
+    ))) |> 
+  mutate(research_stage = fct_recode(research_stage,
+    "Project genesis" = "Project genesis/ first thoughts/ idea creation",
+    "Reality check" = "Reality check (e.g., literature search, consultation with colleagues)",
+    "Preparations" = "Preparations (IRB permit, preregistration, experiment preparations)",
+    "Data collection" = "Data collection",
+    "Data analysis" = "Data analysis",
+    "Report writing" = "Report writing",
+    "Waiting for journal" = "Waiting for journal's response and revisions",
+    "Reviews and revisions" = "Revisions",
+    "Post-project stage" = "Post-project stage (the project has received a decision (accepted or rejected). At this point, it is either concluded or being revised and prepared for submission to another venue)")
+  )
+```
+
+## Filtering bad responses
+
+```{r}
+
+data_test = data |> 
+  filter(position != "Non-academic researcher") |> 
+  mutate(across(interest:anger, as.numeric)) |> 
+  rowwise() |> 
+  mutate(
+    n_non_na = sum(!is.na(c_across(interest:anger))),
+    n_unique = n_distinct(c_across(interest:anger), na.rm = TRUE)
+  ) |> 
+  ungroup() |> 
+  filter(
+    n_non_na > 0,
+    !(n_non_na > 1 & n_unique == 1)
+  ) |> 
+  select(-n_non_na, -n_unique)
+
+```
+
+
+## Demographic data
+
+### Number of participants
+
+```{r}
+n = data |> 
+  summarise(n = n())
+```
+
+### Gender
+
+```{r}
+gender = data |> 
+  group_by(gender) |> 
+  summarise(n = n())
+```
+
+### Position
+
+```{r}
+position = data |> 
+  group_by(position) |> 
+  summarise(n = n())
+```
+
+### Discipline
+
+```{r}
+discipline = data |> 
+  group_by(area) |> 
+  summarise(n = n())
+```
+
+### Country
+
+```{r}
+
+country = data |> 
+  group_by(country) |> 
+  summarise(n = n())
+```
+
+### Category of work
+
+```{r}
+category_of_work = data |> 
+  group_by(category_of_work) |> 
+  summarise(n = n())
+```
+
+## Research stage
+
+```{r}
+research_stage = data |> 
+  filter(!is.na(research_stage)) |>
+  group_by(research_stage) |> 
+  summarise(n = n())
+```
+
+### Save each data as csv
+
+```{r}
+tables <- list(
+  n = n,
+  position = position,
+  gender = gender,
+  discipline = discipline,
+  country = country,
+  category_of_work = category_of_work,
+  research_stage = research_stage
+)
+folder_path <- "tables/"
+
+for (name in names(tables)) {
+  file_name <- paste0(folder_path, name, ".csv")
+  write.csv(tables[[name]], here::here(file_name), row.names = FALSE)
+}
+```
+
+## General feelings
+
+```{r}
+general_feeling = data |> 
+  group_by(general_feeling) |> 
+  summarise(n = n())
+
+general_feeling_distribution = data |> 
+  ggplot(aes(x = general_feeling)) +
+  geom_bar()
+
+ggsave(
+  here::here("plots/general_feeling_distribution.jpeg"),
+  width = 8,
+  height = 4,
+  dpi = 300
+)
+```
+
+## Stage-specific feelings
+
+### Grouping research stages
+
+```{r}
+emotion_vars <- c(
+  "interest", "amusement", "pride", "joy", "pleasure", "contentment",
+  "love", "admiration", "relief", "compassion", "sadness", "guilt",
+  "regret", "shame", "disappointment", "fear", "disgust", "contempt",
+  "hate", "anger"
+)
+
+research_stage_grouped_mean <- data |> 
+  filter(!is.na(research_stage)) |> 
+  group_by(research_stage) |> 
+  summarise(
+    across(
+      all_of(emotion_vars), 
+      ~ round(mean(.x[.x != 0], na.rm = TRUE), 3)
+    )
+  )
+
+# For every research stage, pick the highest and lowest
+
+research_stage_long <- research_stage_grouped_mean |> 
+  pivot_longer(cols = all_of(emotion_vars), names_to = "emotion", values_to = "mean_value")
+
+highest_stage_feeling <- research_stage_long |> 
+  group_by(research_stage) |> 
+  slice_max(order_by = mean_value, n = 1, with_ties = FALSE)
+
+lowest_stage_feeling <- research_stage_long |> 
+  group_by(research_stage) |> 
+  slice_min(order_by = mean_value, n = 1, with_ties = FALSE)
+
+highest_lowest_feeling = highest_stage_feeling |> 
+  left_join(lowest_stage_feeling, by = "research_stage", suffix = c("_highest", "_lowest")) |> 
+  select(research_stage, emotion_highest, mean_value_highest, emotion_lowest, mean_value_lowest)
+
+# Highest and lowest two emotions per stage
+# NOT DONE
+
+highest_stage_feeling <- research_stage_long |> 
+  group_by(research_stage) |> 
+  slice_max(order_by = mean_value, n = 2, with_ties = FALSE)
+
+lowest_stage_feeling <- research_stage_long |> 
+  group_by(research_stage) |> 
+  slice_min(order_by = mean_value, n = 2, with_ties = FALSE)
+
+highest_lowest_feeling = highest_stage_feeling |> 
+  left_join(lowest_stage_feeling, by = "research_stage", suffix = c("_highest", "_lowest")) |> 
+  select(research_stage, emotion_highest, mean_value_highest, emotion_lowest, mean_value_lowest)
+```
+
+### Dominant emotion for each stage
+
+```{r}
+dominant_emotion = research_stage_long |> 
+  group_by(research_stage) |> 
+  slice_max(order_by = mean_value, n = 1, with_ties = FALSE) |> 
+  select(research_stage, emotion, mean_value)
+```
+
+# 3 highest intensity emotions for each stage
+
+```{r}
+three_highest_feelings = research_stage_long |> 
+  group_by(research_stage) |> 
+  slice_max(order_by = mean_value, n = 3, with_ties = FALSE)
+```
+
+### Most intense emotion for each person
+
+```{r}
+# FIX THIS
+person_most_intense_feeling <- data %>% 
+  rowwise() %>% 
+  mutate(
+    emotion_values = list(c_across(all_of(emotion_vars))),
+    max_value = max(unlist(emotion_values), na.rm = TRUE),
+    most_intense_feeling = paste0(
+      emotion_vars[which(unlist(emotion_values) == max_value)],
+      collapse = ", "
+    )
+  ) %>%
+  select(anonym_id, research_stage, most_intense_feeling, max_value) %>%
+  ungroup()
+```
+
+
+### Emotional change through the project
+
+```{r}
+research_stage_long = research_stage_long |> 
+  mutate(emotion = factor(emotion, levels = emotion_vars))
+
+ggplot(research_stage_long, aes(x = research_stage, y = mean_value, color = emotion, group = emotion)) +
+  geom_line() +
+  geom_point() +
+  coord_cartesian(ylim = c(0, 7)) +
+  facet_wrap( ~ emotion, ncol = 5) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank()
+  )
+
+ggsave(
+  here::here("plots/emotion_line_plot.jpeg"),
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+```
+
+## Positive vs negative emotions
+
+### Group positive and negative emotions
+
+```{r}
+positive_emotions = c(
+  "interest", "amusement", "pride", "joy", "pleasure", "contentment",
+  "love", "admiration", "relief", "compassion"
+)
+
+negative_emotions = c(
+  "sadness", "guilt", "regret", "shame", "disappointment", "fear",
+  "disgust", "contempt", "hate", "anger"
+)
+
+
+dichotomous_emotion_data <- data |>
+  filter(!is.na(research_stage)) |>
+  rowwise() |>
+  mutate(
+    positive_emotions_mean = mean(c_across(all_of(positive_emotions))[c_across(all_of(positive_emotions)) != 0], na.rm = TRUE),
+    negative_emotions_mean = mean(c_across(all_of(negative_emotions))[c_across(all_of(negative_emotions)) != 0], na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  group_by(research_stage) |>
+  summarise(
+    positive_emotions = mean(positive_emotions_mean, na.rm = TRUE),
+    negative_emotions = mean(negative_emotions_mean, na.rm = TRUE)
+  )
+
+
+# highest positive and highest negative
+
+positive_emotions_data = data |> 
+  select(research_stage, all_of(positive_emotions)) |>
+  filter(!is.na(research_stage))
+
+negative_emotions_data = data |>
+  select(research_stage, all_of(negative_emotions)) |>
+  filter(!is.na(research_stage))
+```
+
+### Heatmap of emotion intensities
+
+```{r}
+heatmap_data <- research_stage_grouped_mean |>
+  pivot_longer(
+    cols = -research_stage,
+    names_to = "emotion",
+    values_to = "mean_intensity"
+  ) |>
+  mutate(emotion = factor(emotion, levels = rev(emotion_vars))) |> 
+  mutate(valence = ifelse(emotion %in% positive_emotions, "positive", "negative"))
+
+ggplot(heatmap_data, aes(x = factor(research_stage), y = emotion, fill = mean_intensity)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(option = "plasma", na.value = "grey90") +
+  labs(
+    fill = "Mean Intensity (excl. 0)",
+    title = "Mean Emotion Intensity by Research Stage"
+  ) +
+  geom_segment(aes(x = 0.5, xend = 9.5, y = 10.5), color = "green") +
+  annotate("text", x = 10, y = 10.5, label = "Valence\ndivide") +
+  coord_cartesian(clip = "off") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = margin(20, 25, 10, 10),
+    legend.position = "bottom"
+  )
+
+ggsave(
+  here::here("plots/heatmap_plot.jpeg"),
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+```
+
+### faceted bar chart for each stage for positive and negative emotions
+
+```{r}
+positive_emotions_mean <- positive_emotions_data |>
+  filter(!is.na(research_stage)) |>
+  rowwise() |>
+  mutate(positive_mean = mean(c_across(all_of(positive_emotions))[c_across(all_of(positive_emotions)) != 0], na.rm = TRUE)) |>
+  ungroup() |>
+  group_by(research_stage) |>
+  summarise(positive_mean = round(mean(positive_mean, na.rm = TRUE), 3))
+
+
+negative_emotions_mean <- negative_emotions_data |>
+  filter(!is.na(research_stage)) |>
+  rowwise() |>
+  mutate(negative_mean = mean(c_across(all_of(negative_emotions))[c_across(all_of(negative_emotions)) != 0], na.rm = TRUE)) |>
+  ungroup() |>
+  group_by(research_stage) |>
+  summarise(negative_mean = round(mean(negative_mean, na.rm = TRUE), 3))
+
+combined_valence_emotions_mean = positive_emotions_mean |> 
+  left_join(negative_emotions_mean, by = "research_stage")
+
+valence_long_mean <- combined_valence_emotions_mean |>
+  pivot_longer(cols = c(positive_mean, negative_mean),
+               names_to = "valence",
+               values_to = "mean_intensity") |>
+  mutate(valence = ifelse(valence == "positive_mean", "positive", "negative"))
+
+ggplot(valence_long_mean, aes(x = valence, y = mean_intensity, fill = valence)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("positive" = "#d73027", "negative" = "#4575b4")) +
+  facet_wrap(~ research_stage, ncol = 3) +
+  labs(y = "Mean Emotion Intensity", x = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_blank())
+
+ggsave(
+  here::here("plots/faceted_bar_chart_valence.jpeg"),
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+```
+
+### Heatmap for positive and negative emotions
+
+```{r}
+ggplot() +
+  # Negative emotions in blue
+  geom_tile(
+    data = filter(heatmap_data, valence == "negative"),
+    aes(x = factor(research_stage), y = emotion, fill = mean_intensity),
+    color = "white"
+  ) +
+  scale_fill_gradient(
+    low = "#e0ecf4", high = "#0571b0",  # light blue to dark blue
+    name = "Negative\nMean Intensity"
+  ) +
+    ggnewscale::new_scale_fill() +
+# Positive emotions in red
+  geom_tile(
+    data = filter(heatmap_data, valence == "positive"),
+    aes(x = factor(research_stage), y = emotion, fill = mean_intensity),
+    color = "white"
+  ) +
+  scale_fill_gradient(
+    low = "#ffe5e5", high = "#d73027",  # light red to dark red
+    name = "Positive\nMean Intensity"
+  ) +
+  labs(title = "Mean Emotion Intensity by Research Stage") +
+  coord_cartesian(clip = "off") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "bottom",
+    plot.margin = margin(20, 25, 10, 10)
+  )
+
+ggsave(
+  here::here("plots/heatmap_plot_valence.jpeg"),
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+```
+
+### Emotional change of positive and negative emotions
+
+```{r}
+dichotomous_emotion_data_long <- dichotomous_emotion_data |>
+  pivot_longer(
+    cols = c(positive_emotions, negative_emotions),
+    names_to = "emotion",
+    values_to = "mean_intensity"
+  ) |> 
+  mutate(emotion = ifelse(emotion == "positive_emotions", "positive", "negative"))
+
+ggplot(dichotomous_emotion_data_long, aes(x = factor(research_stage), y = mean_intensity, color = emotion, group = emotion)) +
+  geom_point() +
+  geom_line() +
+  scale_color_manual(values = c("positive" = "#d73027", "negative" = "#4575b4")) +
+  labs(title = "Change of emotions over the course of a project", y = "Intensity of emotions", x = "") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+ggsave(
+  here::here("plots/emotion_change_plot.jpeg"),
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+```
+
+### Radar chart
+
+```{r}
+radar_data <- data |> 
+  summarize(across(emotion_vars, ~ round(mean(.x, na.rm = TRUE), 1))) |> 
+  rownames_to_column(var = "label") |> 
+  pivot_longer(-label, names_to = "emotion", values_to = "score")
+
+
+plot_data <- radar_data |> 
+  select(-label) |> 
+   mutate(emotion = factor(emotion, levels = emotion_vars))
+
+
+ggplot(plot_data, aes(x = emotion, y = score, fill = score)) +
+  geom_hline(yintercept = seq(1, 7, by = 1), color = "grey", size = 0.5) +
+  geom_bar(stat = "identity") +
+  scale_fill_gradientn(
+    name = "Intensity of emotion",
+    colours = c("#6C5B7B", "#C06C84", "#F67280", "#F8B195"),
+    guide = guide_colorbar(
+    barwidth = 15,
+    barheight = 1.5,
+    title.position = "top",
+    title.hjust = 0.5
+    )
+  ) +
+  coord_polar(start = 0, clip = "off") +
+  scale_y_continuous(
+    limits = c(-1, 7),
+    expand = c(0, 0),
+    breaks = c(0, 1, 2, 7)
+  ) +
+   annotate(
+    x = 0.5, 
+    y = 1, 
+    label = "1", 
+    geom = "text", 
+    color = "gray12", 
+    family = "serif",
+    size = 4
+  ) +
+  annotate(
+    x = 0.5, 
+    y = 4, 
+    label = "4", 
+    geom = "text", 
+    color = "gray12", 
+    family = "serif",
+    size = 4
+  ) +
+  annotate(
+    x = 0.5, 
+    y = 7, 
+    label = "7", 
+    geom = "text", 
+    color = "gray12", 
+    family = "serif",
+    size = 4
+  ) +
+  theme_minimal(base_family = "serif") +
+  labs(title = "Emotion wheel of researchers", y = "", x = "") +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank(),
+    plot.title = element_text(
+      size = 16,
+      family = "serif"
+    ),
+    legend.title = element_text(
+      size = 12,
+      family = "serif"
+    ),
+    panel.grid = element_blank(),
+    axis.text.x = element_text(
+      size = 12,
+      family = "serif",
+      margin = margin(t = 30)
+  ),
+  plot.margin = margin(20, 20, 20, 20),
+    legend.position = "bottom"
+  ) 
+
+
+ggsave(
+  here::here("plots/radar_chart_ggplot.jpeg"),
+  width = 8,
+  height = 8,
+  dpi = 300
+)
+```
+
+## Save data
+
+```{r}
+write.csv(research_stage_grouped_mean, here::here("data/research_stage_grouped_mean.csv"), row.names = FALSE)
+write.csv(dichotomous_emotion_data, here::here("data/dichotomous_emotion_data.csv"), row.names = FALSE)
+write.csv(general_feeling, here::here("data/general_feeling.csv"), row.names = FALSE)
+write.csv(highest_lowest_feeling, here::here("data/highest_stage_feeling.csv"), row.names = FALSE)
+write.csv(three_highest_feelings, here::here("data/lowest_stage_feeling.csv"), row.names = FALSE)
+write.csv(dominant_emotion, here::here("data/highest_lowest_feeling.csv"), row.names = FALSE)
+```

@@ -19,15 +19,18 @@ library(scales)
 library(magrittr)
 library(apyramid)
 library(rlang)
-install.packages("maps")
+# install.packages("maps")
 library(maps)
+library(here)
+
+
 ```
 
 
 #data formatting, setup
 ```{r}
-source("C:/Emotional landscape/functionscombined_new.R")
-raw_data <- read.csv("C:/Emotional landscape/raw_data.csv")
+source(here::here("functionscombined_new.R"))
+raw_data <- read.csv(here::here("raw_data.csv"))
 
 data_recoded = raw_data[-1:-2, ]
 
@@ -113,13 +116,10 @@ data_recoded_clean = data_recoded %>%
 #completion distribution
 plot_distribution_categorical(data_recoded, "Status", "Questionnaire Completion")
 
-<<<<<<< Updated upstream
 ggsave_fn(filename = "questionaire_completion", plot = get_last_plot(), dir = "plots")
 ```
 
 ```{r}
-=======
->>>>>>> Stashed changes
 #gender distribution
 plot_distribution_categorical(
   data_recoded,

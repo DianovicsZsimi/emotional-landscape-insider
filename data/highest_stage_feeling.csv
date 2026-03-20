@@ -1,0 +1,37 @@
+"research_stage","emotion_highest","mean_value_highest","emotion_lowest","mean_value_lowest"
+"Project genesis","interest",5.991,"guilt",2.438
+"Project genesis","interest",5.991,"shame",2.5
+"Project genesis","joy",4.829,"guilt",2.438
+"Project genesis","joy",4.829,"shame",2.5
+"Reality check","interest",6.017,"hate",2.278
+"Reality check","interest",6.017,"disgust",2.409
+"Reality check","pride",4.642,"hate",2.278
+"Reality check","pride",4.642,"disgust",2.409
+"Preparations","interest",5.11,"hate",1.902
+"Preparations","interest",5.11,"disgust",2.455
+"Preparations","pride",4.191,"hate",1.902
+"Preparations","pride",4.191,"disgust",2.455
+"Data collection","interest",5.359,"hate",1.86
+"Data collection","interest",5.359,"disgust",2
+"Data collection","pride",4.617,"hate",1.86
+"Data collection","pride",4.617,"disgust",2
+"Data analysis","interest",5.756,"hate",2.178
+"Data analysis","interest",5.756,"disgust",2.391
+"Data analysis","pride",4.626,"hate",2.178
+"Data analysis","pride",4.626,"disgust",2.391
+"Report writing","interest",5.461,"hate",2.246
+"Report writing","interest",5.461,"disgust",2.354
+"Report writing","pride",4.843,"hate",2.246
+"Report writing","pride",4.843,"disgust",2.354
+"Waiting for journal","interest",5.044,"disgust",2.118
+"Waiting for journal","interest",5.044,"shame",2.294
+"Waiting for journal","pride",4.628,"disgust",2.118
+"Waiting for journal","pride",4.628,"shame",2.294
+"Reviews and revisions","interest",4.841,"hate",2.25
+"Reviews and revisions","interest",4.841,"disgust",2.258
+"Reviews and revisions","pride",4.089,"hate",2.25
+"Reviews and revisions","pride",4.089,"disgust",2.258
+"Post-project stage","interest",5.733,"hate",2.083
+"Post-project stage","interest",5.733,"guilt",2.5
+"Post-project stage","pride",5.348,"hate",2.083
+"Post-project stage","pride",5.348,"guilt",2.5

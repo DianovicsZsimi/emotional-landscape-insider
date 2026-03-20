@@ -1,0 +1,80 @@
+---
+title: "raw_to_clean_data"
+author: "Dominik Dianovics"
+format: html
+---
+
+# Emotional landscape of reesearchers pilot data cleaning
+
+## Raw to clean data
+
+### Installing packages
+
+```{r echo=FALSE, output=FALSE}
+library(tidyverse)
+library(here)
+data_path <- here("data")
+```
+
+### Importing data
+
+```{r echo=FALSE}
+raw_data = read.csv(here::here("data/full_data.csv"))
+
+```
+
+### Checking metadata
+
+```{r}
+meta_data = raw_data |> 
+  select(StartDate, 
+         EndDate,
+         Status,
+         Duration..in.seconds.,
+         Progress,
+         RecordedDate,
+         ResponseId,
+         UserLanguage,
+         DistributionChannel)
+```
+
+### Creating codebook
+
+```{r}
+raw_data_filtered_codebook = raw_data[1, , drop = FALSE]
+```
+
+### Unifying syntax
+
+```{r}
+raw_data_syntax = raw_data |> 
+  rename_with(tolower) |> 
+  slice(-c(1, 2))
+```
+
+### Checking for invalid data
+
+```{r}
+raw_data_valid = raw_data_syntax |> 
+  filter(dismiss_1 != "No")
+
+```
+
+### Creation of anonym id and dropping unnecessary columns
+
+```{r}
+raw_data_filtered = raw_data_valid |> 
+  mutate(anonym_id = row_number()) |> 
+  mutate(finished = ifelse(finished == "True", T, F)) |> 
+  select(-startdate, -enddate, -status, -distributionchannel, -userlanguage, -progress, -responseid) |> 
+  relocate(anonym_id)
+
+```
+
+# Saving data
+
+```{r}
+write.csv(raw_data_filtered, here::here("data/raw_to_clean_data.csv"), row.names = FALSE)
+write.csv(raw_data_filtered_codebook, here::here("data/codebook.csv"), row.names = FALSE)
+write.csv(meta_data, here::here("data/meta_data.csv"), row.names = FALSE)
+```

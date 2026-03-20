@@ -1,0 +1,97 @@
+---
+title: "clean_to_processed_data"
+author: "Dominik Dianovics"
+format: html
+---
+
+# Emotional landscape of reesearchers pilot data cleaning
+
+## Clean to processed data
+
+### Installing packages
+
+```{r echo=FALSE, output=FALSE}
+library(tidyverse)
+library(here)
+data_path <- here("data")
+```
+
+### Importing data
+
+```{r}
+data = read.csv(here::here("data/raw_to_clean_data.csv"))
+```
+
+### Renaming columns for easier understanding
+
+```{r}
+clean_data = data |> 
+  rename(
+    general_feeling = feeling_general_1,
+    general_feeling_cause = cause_general,
+    research_stage_feeling_cause = cause_stage,
+    interest = feeling_stage_1,
+    amusement = feeling_stage_2,
+    pride = feeling_stage_3,
+    joy = feeling_stage_4,
+    pleasure = feeling_stage_5,
+    contentment = feeling_stage_6,
+    love = feeling_stage_7,
+    admiration = feeling_stage_8,
+    relief = feeling_stage_9,
+    compassion = feeling_stage_10,
+    sadness = feeling_stage_11,
+    guilt = feeling_stage_12,
+    regret = feeling_stage_13,
+    shame = feeling_stage_14,
+    disappointment = feeling_stage_15,
+    fear = feeling_stage_16,
+    disgust = feeling_stage_17,
+    contempt = feeling_stage_18,
+    hate = feeling_stage_19,
+    anger = feeling_stage_20,
+  )
+```
+
+### Spreadsheet for text analyses
+
+```{r}
+general_feeling_text = clean_data |> 
+  select(anonym_id, general_feeling, general_feeling_cause)
+
+research_stage_feeling_text = clean_data |> 
+  select(anonym_id, research_stage, research_stage_feeling_cause,)
+```
+
+# Number of 0s and NAs per person
+
+```{r}
+emotion_vars <- c(
+  "interest", "amusement", "pride", "joy", "pleasure", "contentment",
+  "love", "admiration", "relief", "compassion", "sadness", "guilt",
+  "regret", "shame", "disappointment", "fear", "disgust", "contempt",
+  "hate", "anger"
+)
+
+non_informative_values = clean_data |> 
+  select(anonym_id, research_stage, all_of(emotion_vars)) |> 
+  rowwise() |> 
+  mutate(
+    zero_count = sum(c_across(all_of(emotion_vars)) == 0, na.rm = TRUE),
+    na_count = sum(is.na(c_across(all_of(emotion_vars))))
+  ) |> 
+  ungroup() |> 
+  select(anonym_id, zero_count, na_count)
+```
+
+
+### Saving the data
+
+```{r}
+write.csv(clean_data, here::here("data/clean_to_processed_data.csv"), row.names = FALSE)
+write.csv(general_feeling_text, here::here("data/general_feeling_text.csv"), row.names = FALSE)
+write.csv(research_stage_feeling_text, here::here("data/research_stage_feeling_text.csv"), row.names = FALSE)
+write.csv(non_informative_values, here::here("data/non_informative_values.csv"), row.names = FALSE)
+```
+
+
