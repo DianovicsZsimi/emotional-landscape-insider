@@ -361,6 +361,10 @@ continent_emotions_mean_function_neg <- function(data, continent_name) {
     )
 }
 
+## =======================================================================================================
+# Functions Barbi
+## =======================================================================================================
+
 #Categorical Distribution Plot Function
 plot_distribution_categorical <- function(data,
                                           variable_name,
@@ -412,3 +416,22 @@ plot_distribution_categorical <- function(data,
   
   return(p)
 }
+
+#Violin plot function
+make_violin_plot <- function(data, emotion_name, color) {
+  data_subset <- data %>% 
+    filter(emotion == emotion_name)
+  
+  ggplot(data_subset, aes(x = research_stage, y = intensity)) +
+    geom_violin(fill = color) +
+    geom_boxplot(width = 0.1, outlier.shape = NA) +
+    scale_y_continuous(breaks = 1:7, limits = c(1, 7)) +
+    labs(
+      title = paste ("Distribution of", emotion_name, "across research stages"),
+      x = "Research stage",
+      y = "Intensity"
+    )+
+    theme(
+      axis.text.x = element_text(angle = 45, size = 10)
+    )
+  }

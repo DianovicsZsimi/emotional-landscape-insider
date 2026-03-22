@@ -6,6 +6,7 @@ output: html_document
 ---
 
 # 00. Load libraries
+
 ```{r}
 # Updated library loading with checks for installation
 
@@ -43,8 +44,8 @@ library(gganimate)
 library(magick)
 ```
 
-
 # 0. Data cleaning, data wrangling
+
 ```{r}
 # Updated data loading with checks for missing data handling
 source ("functionscombined_new.R")
@@ -266,6 +267,7 @@ positive_means <- averages_data %>%
 ```
 
 # 1. Study description, descriptives
+
 ```{r}
 data_recoded$Status <- ifelse(data_recoded$Finished,
                          "Completed",
@@ -275,7 +277,9 @@ descriptive_plot1
 ```
 
 ## 1.1. Distributions
+
 ### Gender distribution - Men and Women
+
 ```{r}
 # The plot is hard to read, I suggest cleaning the labels
 
@@ -290,12 +294,14 @@ descriptive_plot2
 ```
 
 ### Research area distribution
+
 ```{r}
 descriptive_plot3 = plot_distribution_categorical(data_recoded, "area", "Participants by Research Area")
 descriptive_plot3
 ```
 
 ### Research stage distribution
+
 ```{r}
 descriptive_plot4 = plot_distribution_categorical(
   data_recoded,
@@ -307,19 +313,21 @@ descriptive_plot4
 ```
 
 ### Position distribution
+
 ```{r}
 descriptive_plot5 = plot_distribution_categorical(data_recoded, "position", "Participants by Position")
 descriptive_plot5 
 ```
 
 ### Work distribution
+
 ```{r}
 descriptive_plot6 = plot_distribution_categorical(data_recoded, "category_of_work", "Participants by Category of Work")
 descriptive_plot6
 ```
 
-
 ### Age distribution
+
 ```{r}
 df_age <- data_recoded %>%
   mutate(
@@ -353,6 +361,7 @@ max_age
 ```
 
 ### Questionnaire dropout spikes
+
 ```{r}
 df_dropout <- data_recoded %>%
   mutate(Progress = as.numeric(Progress)) %>%
@@ -392,6 +401,7 @@ descriptive_plot8
 ```
 
 ### Country distribution - World map
+
 ```{r}
 df_country_map <- data_recoded %>%
   mutate(country = ifelse(country == "" | is.na(country), NA, country)) %>%
@@ -438,6 +448,7 @@ df_country_ranked
 ```
 
 ## 1.2. SD in emotions
+
 ```{r}
 ## flag where SD of emotions are > 1 
 sd_flag <- data_recoded %>% 
@@ -469,6 +480,7 @@ great_sd <- sd_flag %>%
 # 2. Research stage
 
 ## 2.1. Intensity of specific emotions across research stages - version A
+
 ```{r}
 color_vector = c(
   "Project genesis" = "#750600",
@@ -548,6 +560,7 @@ plots_heatmap_stages
 ```
 
 ## 2.1. Combining the overall intensity and heatmap plots into an animated plot: using magick
+
 ```{r}
 # 1. overall emotional intensity 
 imgs_overall <- lapply(plots_emotions_stages, function(single_overall_plot) {
@@ -582,8 +595,8 @@ animation_heatmap <- image_animate(
 animation_heatmap
 ```
 
-
 ## 2.2. Intensity of specific emotions across research stages - version B
+
 ```{r}
 original_order = c(
   "Project genesis",
@@ -632,6 +645,7 @@ plots_specfeeling
 ```
 
 ## 2.3. Intensity of specific emotions across research stages - version C
+
 ```{r}
 all_distribution <- data_recoded %>% 
   select(
@@ -671,8 +685,72 @@ all_distribution_plot
 
 ```
 
+## 2.4. Violin plots of emotional intensity across research stages
 
-## 2.4. Post-project stage
+```{r}
+#Emotions together
+violin_data <- data_recoded %>% 
+  select(
+    research_stage, interest:anger
+  ) %>% 
+  filter(!is.na(research_stage)) %>% 
+  mutate(
+    research_stage = stringr::str_trunc(research_stage, 20)
+  ) %>% 
+  pivot_longer(
+    cols = all_of(feeling_cols),
+    names_to = "emotion",
+    values_to = "intensity"
+  ) %>% 
+  filter(!is.na(intensity)) %>% 
+  mutate(
+    emotion =factor(emotion, levels = feeling_cols)
+    )
+
+violin_plot <- violin_data %>% 
+  ggplot(aes(x = research_stage, y = intensity)) +
+  geom_violin(fill = "#8B2323" ) +
+  geom_boxplot(width = 0.1, outlier.shape = NA) +
+  labs(
+    title = "Distribution of emotional intensity across research stages",
+    x = "Research stage",
+    y = "Intensity"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, size = 10)
+  )
+
+violin_plot
+
+
+#Emotions separately
+violin_data <- data_recoded %>% 
+  select(
+    research_stage, interest:anger
+  ) %>% 
+  filter(!is.na(research_stage)) %>% 
+  mutate(
+    research_stage = stringr::str_trunc(research_stage, 20)
+  ) %>% 
+  pivot_longer(
+    cols = all_of(feeling_cols),
+    names_to = "emotion",
+    values_to = "intensity"
+  ) %>% 
+  filter(!is.na(intensity)) %>% 
+  mutate(
+    emotion = factor(emotion,levels= feeling_cols)
+  )
+
+violin_colors <- c("#D73027","#F46D43","#FDAE61","#FEE08B","#FFFFBF","#E6F598","#ABDDA4","#66C2A5","#1A9850","#3288BD","#5E4FA2","#7B68EE","#9370DB", "#BA55D3","#D87093","#F08080","#FF7F50","#FFA07A","#FFB6C1","#FFC0CB")
+
+for (i in seq_along(feeling_cols)) {
+  print(make_violin_plot(violin_data, feeling_cols[i], violin_colors[i]))
+}
+```
+
+## 2.5. Post-project stage
+
 ```{r}
 post_project <- data_recoded %>% 
   filter(
@@ -738,7 +816,8 @@ post_project3_plot <- post_project3_long %>%
 post_project_plots = list(post_project1_plot = post_project1_plot, post_project2_plot = post_project2_plot, post_project3_plot = post_project3_plot)
 ```
 
-## 2.5. facet_wrap plot for emotional intensity in all research stages
+## 2.6. facet_wrap plot for emotional intensity in all research stages
+
 ```{r}
 head(data_recoded)
 overall_intensity <- data_recoded %>% 
@@ -774,8 +853,8 @@ ggplot(overall_long, aes(x = emotion, y = mean_intensity, fill = intensity)) +
 
 ```
 
+## 2.7. NA values in specific emotions across research stages
 
-## 2.6. NA values in specific emotions across research stages
 ```{r}
 ## df for counting NA values by research stage
 na_counter <- data_recoded %>% 
@@ -836,7 +915,9 @@ na_facetwrap_plot <- ggplot(na_prop, aes(emotion, percent_na)) +
 na_facetwrap_plot
 
 ```
+
 ## NA values by emotions
+
 ```{r}
 na_emotions <- na_counter %>% 
   pivot_longer(
@@ -861,8 +942,8 @@ na_emotions_plot <- na_emotions %>%
 na_emotions_plot
 ```
 
+## 2.8 Overall emotional landscape across research stages
 
-## 2.7 Overall emotional landscape across research stages
 ```{r}
 research_stage_emotions = sd_flag%>% 
   select(research_stage, all_of(feeling_cols), sd_landscape) %>% 
@@ -924,7 +1005,8 @@ combined_research_stage
 overall_research_stage
 ```
 
-## 2.8 Emotional landscape across research stages in chronological order
+## 2.9 Emotional landscape across research stages in chronological order
+
 ```{r}
 
 original_order = c(
@@ -986,7 +1068,8 @@ chron_plot <- chron_long %>%
 chron_plot  
 ```
 
-## 2.9.  NA values in emotions across research stages
+## 2.10. NA values in emotions across research stages
+
 ```{r}
 # df for counting NA values by research stage
 na_counter_all <- data_recoded %>% 
@@ -996,9 +1079,10 @@ na_counter_all <- data_recoded %>%
   mutate(sum_na_feelings = rowSums(across(interest:anger)))
 ```
 
-## 2.10. Distributions - Barcharts: overall emotional landscape dominated by positive or negative emotions - comparison
+## 2.11. Distributions - Barcharts: overall emotional landscape dominated by positive or negative emotions - comparison
 
-## 2.10.1 version
+## 2.11.1 version
+
 ```{r}
 stages_barchart <- averages_data %>% 
   select( 
@@ -1019,7 +1103,8 @@ stages_reg_plot = stages_barchart %>%
 
 ```
 
-## 2.10.2 version
+## 2.11.2 version
+
 ```{r}
 stages_barchart_prop = stages_barchart %>%
   mutate(mean_plot = ifelse(pos_neg == "negative_mean", -mean_value, mean_value))
@@ -1035,7 +1120,8 @@ stages_barchart_prop %>%
 
 ```
 
-## 2.10.3 version 
+## 2.11.3 version
+
 ```{r}
 pos_neg_prop_stage <- stages_barchart %>%
   group_by(category) %>%
@@ -1054,7 +1140,9 @@ pos_neg_prop_stage %>%
 ```
 
 # 3. Gender
+
 ## 3.1. Intensity of emotions
+
 ```{r}
 genders_emotions = data_recoded %>%
   filter(
@@ -1170,9 +1258,10 @@ combined_gender = gender_pos+gender_neg
 combined_gender
 ```
 
+## 3.3. Distributions: emotional landscapes dominated by mainly negative or positive emotions: Age-gender distributions
 
-## 3.3. Distributions: emotional landscapes dominated by mainly negative or positive emotions: Age-gender distributions 
 ### 3.3.1. Negative emotions more dominant - preparing data, saving plot as an object
+
 ```{r}
 ## classifying the data types of columns
 age_negative <- negative_means %>%
@@ -1189,6 +1278,7 @@ negative_age_plot <- pyramid_plot(age_negative_counts) +
 ```
 
 ### 3.3.2. Positive emotions more dominant - prepare data, save plot as an object
+
 ```{r}
 positive_means <- averages_data %>% 
   filter(
@@ -1211,6 +1301,7 @@ positive_age_plot <- pyramid_plot(age_positive_counts) +
 ```
 
 ### 3.3.3. Combining the two age pyramids for comparison
+
 ```{r}
 age_comparisons <- positive_age_plot | negative_age_plot
 
@@ -1219,7 +1310,9 @@ age_comparison_plot <- age_comparisons +
 ```
 
 # 4. Category_of_work
-## 4.1. Distributions - Barcharts: overall emotional landscape dominated by mostly positive or negative emotions 
+
+## 4.1. Distributions - Barcharts: overall emotional landscape dominated by mostly positive or negative emotions
+
 ```{r}
 work_averages_barchart <- averages_data %>% 
   select( 
@@ -1236,7 +1329,9 @@ work_reg_plot = work_averages_barchart %>%
 ```
 
 # 5. Area
+
 ## 5.1. Distributions - Barcharts: emotional landscapes dominated by mainly negative or positive emotions
+
 ```{r}
 area_barchart <- averages_data %>% 
   select( 
@@ -1252,9 +1347,8 @@ area_reg_plot = area_barchart %>%
        title = "Emotional valence within the different scientific areas")
 ```
 
-
-
 ### 5.2 Overall emotional landscape by area
+
 ```{r}
 area_emotions = data_recoded %>% 
   select(area, all_of(feeling_cols)) %>% 
@@ -1321,7 +1415,9 @@ combined_area
 ```
 
 # 6. Position
+
 ## 6.1. Distributions: emotional landscapes dominated by mainly negative or positive emotions
+
 ```{r}
 position_barchart <- averages_data %>% 
   select( 
@@ -1340,9 +1436,8 @@ position_reg_plot = position_barchart %>%
        title = "Emotional valence within positions")
 ```
 
-
-
 ## 6.2. Overall emotional landscape by position
+
 ```{r}
 position_emotions = data_recoded %>% 
   filter(!(position == "")) %>% 
@@ -1410,6 +1505,7 @@ position_combined
 # 7. Combined df of means - Research stage, gender, area, position
 
 ## 7.1. DF mean emotions combined
+
 ```{r}
 combined_emotions <- bind_rows(
   area_emotions_mean %>% 
@@ -1432,7 +1528,9 @@ combined_emotions <- bind_rows(
 ```
 
 #### Q
+
 Bar chart for loop
+
 ```{r}
 reg_barcharts = list(stages_reg_plot = stages_reg_plot, position_reg_plot = position_reg_plot, area_reg_plot = area_reg_plot, work_reg_plot = work_reg_plot)
 
@@ -1488,8 +1586,11 @@ pos_neg_prop_plots
 
 
 ```
+
 # 8. Country, regions
+
 ## 8.1. Overall emotional landscape region-wise
+
 ```{r}
 continents <- c("Europe", "Africa", "Asia", "North America", "South America and Central America", "Oceania")
 
@@ -1515,8 +1616,8 @@ continent_results
 continent_plots
 ```
 
-
 ## 8.2. Intensity of positive emotions region-wise
+
 ```{r}
 #Positive
 continent_results_pos = list()
@@ -1536,9 +1637,8 @@ continent_plots_pos
 
 ```
 
-
-
 ## 8.3. Intensity of negative emotions region-wise
+
 ```{r}
 #Negative
 continent_results_neg = list()
@@ -1558,17 +1658,16 @@ continent_results_neg
 continent_plots_neg
 ```
 
-
 ## 8.4. Combined plots
+
 ```{r}
 combined_plots_country = Map(`+`, continent_plots_pos, continent_plots_neg) #The map goes through the two vectors in parallel --> given they contain plots, the combined plots are this easy to create
 
 combined_plots_country
 ```
 
-
-
 ## 8.5. Countries with the top 10 most respondents
+
 ```{r}
 #based on frequency
 top10_countries <- country_emotions_clean %>% 
@@ -1614,8 +1713,8 @@ top_10_plot = country_11_groups %>%
 top_10_plot
 ```
 
+## 8.6. Country mapping with at least 10 respondents from the given country
 
-## 8.6. Country mapping with at least 10 respondents from the given country 
 ```{r}
 country_emotions_min10 = country_emotions_clean %>% 
   mutate(country = factor(country)) %>% 
@@ -1677,8 +1776,6 @@ min_10_plots = list("min_10_neg_plot" = min10_neg_plot, "min_10_pos_plo2" = min1
                     "min10_plot" = min10_plot, "min10_comb" = min10_comb)
 min_10_plots
 ```
-
-
 
 # 9. Attributional analysis of general feeling
 
@@ -1760,6 +1857,7 @@ attribution_plots = list("attribution_general" = attribution_general, "attributi
 # 10. Saving plots
 
 ## 10.0
+
 ```{r}
 for (plots in names(reg_barcharts)) {
   ggsave(
@@ -1795,7 +1893,9 @@ for (i in seq_along(pos_neg_prop_plots)) {
 }
 
 ```
-## 10.1 Descriptive plots 
+
+## 10.1 Descriptive plots
+
 ```{r}
 descriptive_plots = list("descriptve_plot1" = descriptive_plot1, "descriptive_plots2" = descriptive_plot2, "descriptive_plot3" = descriptive_plot3, "descriptive_plot4" = descriptive_plot4, "descriptive_plot5" = descriptive_plot5, "descriptive_plot6" = descriptive_plot6, "descriptive_plot7" = descriptive_plot7, "descriptive_plot8" =  descriptive_plot8, "descriptive_plotmap" = descriptive_plotmap)
 descriptive_plots
@@ -1814,6 +1914,7 @@ for (plots in names(descriptive_plots)) {
 ```
 
 ## 10.2. Research stage
+
 ```{r}
 for (stage in names(plots_heatmap_stages)) {
 
@@ -1876,6 +1977,7 @@ ggsave("all_distribution_plot.png", plot = all_distribution_plot, height = 6, wi
 ```
 
 ## 10.2.5. NA plots
+
 ```{r}
 na_plots = list(na_facetwrap_plot = na_facetwrap_plot, na_emotions_plot = na_emotions_plot)
 
@@ -1890,8 +1992,8 @@ for (plots in names(na_plots)) {
 }
 ```
 
-
 ## 10.3 Attribution plots
+
 ```{r}
 for (plots in names(attribution_plots)) {
   ggsave(
@@ -1904,8 +2006,8 @@ for (plots in names(attribution_plots)) {
 }
 ```
 
-
 ## 10.4 Gender plots
+
 ```{r}
 gender_plots = list("gender_div" = gender_div, "gender_neg" = gender_neg, "gender_pos" = gender_pos, "combined_gender" = combined_gender, "overall_gender" = overall_gender)
 
@@ -1923,6 +2025,7 @@ ggsave("age_gender_comparison.png", plot = age_comparison_plot, height = 6, widt
 ```
 
 ## 10.5 Category of work
+
 ```{r}
 category_of_work_plots = list()
 
@@ -1938,6 +2041,7 @@ for (plots in names(category_of_work_plots)) {
 ```
 
 ## 10.6 Area
+
 ```{r}
 area_plots = list("area_div" = area_div, "area_pos" = area_pos, "area_neg" = area_neg, "combined_area" = combined_area, "area_overall" = area_overall) 
 
@@ -1950,6 +2054,7 @@ for (plots in names(area_plots)) {
 ```
 
 ## 10.7 Position
+
 ```{r}
 position_plots = list( "position_pos" = position_pos, 
                       "position_neg" = position_neg, 
@@ -1966,7 +2071,9 @@ for (plots in names(position_plots)) {
   )
 }
 ```
+
 ## 10.8 country
+
 ```{r}
 #country_plots = list("top_10_plot" = top_10_plot min_10_plots, continent_plots, continent_plots_pos, continent_plots_neg, combined_plots_country)
 names(combined_plots_country)
