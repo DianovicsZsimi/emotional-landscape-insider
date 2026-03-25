@@ -55,8 +55,7 @@ raw_data <- read.csv("full_data.csv", na.strings = c("", "NA", "NaN"))
 data_clean = raw_data[-1:-2, ]
 
 feeling_cols = c("interest","amusement","pride","joy","pleasure",
-  "contentment","love","admiration","relief","compassion", "sadness", "guilt", "regret" ,"shame", 
-                       "disappointment" , "fear", "disgust", "contempt" , "hate","anger")
+  "contentment","love","admiration","relief","compassion", "sadness", "guilt", "regret" ,"shame", "disappointment" , "fear", "disgust", "contempt" , "hate","anger")
 
 positive_feelings <- c(
   "interest","amusement","pride","joy","pleasure",
@@ -545,7 +544,7 @@ for (stage in unique(na.omit(data_recoded$research_stage))) {
     scale_fill_gradient(
       low = "white", 
       high = color_vector[stage], 
-      limits = c(0, 7)) +
+      limits = c(1, 7)) +
     labs(
       title = paste("Intensity of emotions on the level of participants in the", stage, "stage")
     )
@@ -633,6 +632,8 @@ for (feeling in feeling_cols) {
     ggplot(aes(x = research_stage, y = mean_feeling )) +
     geom_col(fill = "lightgreen", na.rm = TRUE) +
     coord_cartesian(ylim = c(1, 7))+
+    scale_y_continuous(breaks = seq(1,7, by = 2),
+                       expand = c(0,0))+
     labs(
       title = paste("Intensity of", feeling, "through the research stages")) +
     theme(
@@ -674,6 +675,9 @@ all_distribution_plot = all_distribution %>%
   ggplot(aes(x = research_stage, y = intensity)) +
   geom_col(fill = "#84CDF0", na.rm = T
     ) +
+  coord_cartesian(ylim = c(1, 7))+
+  scale_y_continuous(breaks = seq(1, 7, by = 2),
+                     expand = c(0,0))+
     labs(
       title = "Intensity of all emotions through the research stages") +
     theme(
@@ -814,6 +818,7 @@ post_project3_plot <- post_project3_long %>%
       tag = "4.3.")
 
 post_project_plots = list(post_project1_plot = post_project1_plot, post_project2_plot = post_project2_plot, post_project3_plot = post_project3_plot)
+post_project_plots
 ```
 
 ## 2.6. facet_wrap plot for emotional intensity in all research stages
@@ -842,7 +847,9 @@ overall_long <- overall_intensity %>%
 # create plot 
 ggplot(overall_long, aes(x = emotion, y = mean_intensity, fill = intensity)) +
   facet_wrap(~ research_stage, nrow = 3) +
-  scale_y_continuous(limits = c(0, 7)) +
+  coord_cartesian(ylim = c(1,7))+
+  scale_y_continuous(breaks = seq(1, 7, by = 2), 
+                     expand = c(0,0))+
   geom_col(
     fill = "#c6a1f9", na.rm = T
   ) +
@@ -891,25 +898,29 @@ na_all <- na_counter %>%
     cols = -research_stage, 
     names_to = "emotion", 
     values_to = "na_count"
-  ) 
+  ) %>% 
+  mutate(emotion = factor(emotion, levels = feeling_cols))
 na_prop <- na_all %>%
   group_by(research_stage) %>%
-  mutate(prop_na = na_count / sum(na_count),
-         percent_na = 100 * prop_na)
-
-
+  mutate(prop_na = na_count / sum(na_count))
+feeling_cols
+levels(na_prop$emotion)
 ## -> Barchart for all stages
 na_prop %>% 
-  mutate(emotion = factor(emotion, levels = unique(emotion))) %>%
+  mutate(emotion = factor(emotion, levels = feeling_cols)) %>%
   mutate(research_stage = factor(research_stage, levels = original_order))
 
-na_facetwrap_plot <- ggplot(na_prop, aes(emotion, percent_na)) +
+levels(na_prop$emotion)
+
+na_facetwrap_plot <- ggplot(na_prop, aes(emotion, prop_na)) +
   facet_wrap(
     ~ research_stage) +
   geom_bar(stat = "identity", fill = "#8DB5E0") +
+  scale_y_continuous(labels = percent)+
   theme(
     axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), 
-    legend.position = "none") +
+    legend.position = "none",
+    axis) +
   labs(
       title = "Distribution of NA responses between emotions in each group")
 na_facetwrap_plot
@@ -1060,8 +1071,8 @@ chron_plot <- chron_long %>%
   theme_tufte() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))+ 
   scale_y_continuous(
-  limits = c(0, 7),
-  breaks = 0:7
+  limits = c(1, 7),
+  breaks = 1:7
 )
 
 
@@ -1100,6 +1111,7 @@ stages_reg_plot = stages_barchart %>%
   labs(x = "Research stage", 
        y = "Mean value", 
        title = "Emotional valence within the research stages")
+stages_reg_plot
 
 ```
 
@@ -1112,10 +1124,14 @@ stages_barchart_prop = stages_barchart %>%
 stages_barchart_prop %>% 
   ggplot(aes(x = category, y = mean_plot, fill = pos_neg)) +
   geom_col() +
-  geom_hline(yintercept = 0) +
+  geom_rect(
+    aes(xmin = -Inf, xmax = Inf, ymin = -1, ymax = 1),
+    inherit.aes = FALSE,
+    fill = "white"
+  ) +
   scale_fill_manual(values = c("positive_mean" = "darkred", "negative_mean" = "darkblue"))+
   scale_y_continuous(limits = c(-7,7), 
-                     breaks = c(-7,-4,0,4,7))+
+                     breaks = c(-7,-5,-3,-1,1,3,5,7))+
   theme(axis.text.x = element_text(angle = 45))
 
 ```
@@ -1200,6 +1216,8 @@ ggplot(summary_genders,
   geom_col(
     fill = "#c6a"
   ) + 
+  coord_cartesian(ylim = c(1,7))+
+  scale_y_continuous(breaks = seq(1,7, by = 2))+
   labs(
     x = "Valence", 
     y = "Mean intensity", 
@@ -1275,6 +1293,7 @@ age_negative_counts <- age_negative %>%
 ## pyramid to explore the age distribution, split by gender 
 negative_age_plot <- pyramid_plot(age_negative_counts) +
   labs(title = "Overally negative emotions")
+negative_age_plot
 ```
 
 ### 3.3.2. Positive emotions more dominant - prepare data, save plot as an object
@@ -1556,10 +1575,14 @@ for (i in seq_along(bar_chart_prep_list)) {
   bar_chart_prop_list[[i]] = bar_chart_prep_list[[i]] %>% 
     ggplot(aes(x = category, y = mean_plot, fill = pos_neg)) +
   geom_col() +
-  geom_hline(yintercept = 0) +
+  geom_rect(
+    aes(xmin = -Inf, xmax = Inf, ymin = -1, ymax = 1),
+    inherit.aes = FALSE,
+    fill = "white"
+  ) +
   scale_fill_manual(values = c("positive_mean" = "darkred", "negative_mean" = "darkblue"))+
   scale_y_continuous(limits = c(-7,7), 
-                     breaks = c(-7,-4,0,4,7))+
+                     breaks = c(-7,-5,-3,-1,0,1,3,5,7))+
   theme(axis.text.x = element_text(angle = 45))
 }
 bar_chart_prop_list

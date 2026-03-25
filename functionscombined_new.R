@@ -59,13 +59,15 @@ plot_overall = function(df) {
   df %>% 
     ggplot(aes(x = emotion, 
                y = mean_intensity)) +
-    scale_y_continuous(limits = c(0, 7)) +
+    coord_cartesian(ylim = c(1,7)) +
+    scale_y_continuous(breaks = seq(1, 7, by = 2),
+                       expand = c(0,0))+
     geom_col(
       fill = color_vector[stage], na.rm = T
     ) +
     theme(
       axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
-}
+  }
 
 ### Piechart plot replacement: barchart 
 ## selecting relevant columns, averaging data, long format, minimal filtering 
@@ -177,24 +179,26 @@ overall_emotion_plot_valence <- function(data, group_var, mean_var, color_low = 
   data %>%
     arrange({{ mean_var }}) %>%
     ggplot(aes(
-      y    = reorder({{ group_var }}, {{ mean_var }}),
-      x    = {{ mean_var }}, 
-      fill = {{mean_var}})) +
+      y = reorder({{ group_var }}, {{ mean_var }}),
+      x = {{ mean_var }},
+      fill = {{ mean_var }}
+    )) +
     geom_col(width = 0.3) +
-    scale_x_continuous(
-      limits = c(0, 7),
-      breaks = 0:7,
-      labels = 0:7) + 
-    scale_fill_gradient(low = {{color_low}}, high = {{color_high}}) +
-    theme_tufte()+
+    coord_cartesian(xlim = c(1, 7))+
+    scale_x_continuous(breaks = seq(1, 7, by = 2),
+                       expand = c(0,0))+
+    scale_fill_gradient(low = color_low, high = color_high) +
+    theme_tufte() +
     labs(
       title = title_text,
       x = "",
-      y = "") +
+      y = ""
+    ) +
     theme(
-      axis.text.y   = element_text(size = 11, angle = 45, vjust = -1),
-      plot.title    = element_text(hjust = 0.5, face = "bold"),
-      legend.position = "none")
+      axis.text.y = element_text(size = 11, angle = 45, vjust = -1),
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      legend.position = "none"
+    )
 }
 
 
@@ -313,10 +317,9 @@ continent_plot_function_valence = function(data, color_low = "orange",
     arrange(mean_emotion) %>% 
     ggplot(aes(y = reorder(country, mean_emotion), x = mean_emotion,fill = mean_emotion )) +
     geom_col(width = 0.3) +
-    scale_x_continuous(
-      limits = c(0, 7),
-      breaks = 0:7,
-      labels = 0:7) +
+    coord_cartesian(xlim = c(1, 7))+
+    scale_x_continuous(breaks = seq(1, 7, by = 2),
+                       expand = c(0,0))+
     scale_fill_gradient(low = {{color_low}}, high = {{color_high}}) +
     theme_tufte() +
     labs(title = {{title_text}}, x = "", y = "") +
