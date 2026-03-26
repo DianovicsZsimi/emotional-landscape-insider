@@ -433,8 +433,22 @@ make_violin_plot <- function(data, emotion_name, color) {
       title = paste ("Distribution of", emotion_name, "across research stages"),
       x = "Research stage",
       y = "Intensity"
-    )+
+    ) +
     theme(
       axis.text.x = element_text(angle = 45, size = 10)
     )
-  }
+}
+
+radar_plot <- function(df, emotion_name) {
+  data_subset <- df %>% 
+    filter(emotion == emotion_name) %>% 
+    select(-emotion) 
+  
+  max_values <- rep(7, ncol(data_subset))  
+  min_values <- rep(0, ncol(data_subset))
+  
+  radar_ready <- rbind(max_values, min_values, data_subset)
+  
+  radarchart(radar_ready,
+             title = paste("Intensity of", emotion_name, "across research stages"))
+}
