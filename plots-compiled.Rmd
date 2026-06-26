@@ -1,0 +1,392 @@
+---
+title: "plots-compiled"
+author: "Boglarka Ludmany"
+date: "2026-06-23"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r setup, include = FALSE}
+# Updated library loading with checks for installation
+
+if (!require("tidyverse")) install.packages("tidyverse")
+if (!require("ggplot2")) install.packages("ggplot2")
+if (!require("dplyr")) install.packages("dplyr")
+if (!require("stringr")) install.packages("stringr")
+if (!require("rstatix")) install.packages("rstatix")
+if (!require("ggthemes")) install.packages("ggthemes")
+if (!require("tidyr")) install.packages("tidyr")
+if (!require("patchwork")) install.packages("patchwork")
+if (!require("scales")) install.packages("scales")
+if (!require("magrittr")) install.packages("magrittr")
+if (!require("apyramid")) install.packages("apyramid")
+if (!require("rlang")) install.packages("rlang")
+if (!require("maps")) install.packages("maps")
+if (!require("gganimate")) install.packages("gganimate")
+if (!require("magick")) install.packages("magick")
+if (!require("fmsb")) install.packages("fmsb")
+
+
+
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(stringr)
+library(rstatix)
+library(ggthemes)
+library(tidyr)
+library(patchwork)
+library(scales)
+library(magrittr)
+library(apyramid)
+library(rlang)
+library(maps)
+library(gganimate)
+library(magick)
+library(fmsb)
+```
+
+```{r setup, include = FALSE}
+source("plots.R")
+data <- read.csv("data/full_data.csv", na.strings = c("", "NA", "NaN"))
+
+# Changed to data_clean for easier handling for next wrangling
+raw_data = data[-1:-2, ]
+
+feelings = c("interest","amusement","pride","joy","pleasure",
+  "contentment","love","admiration","relief","compassion", "sadness", "guilt", "regret" ,"shame", "disappointment" , "fear", "disgust", "contempt" , "hate","anger")
+
+positive <- c("interest", "amusement", "pride", "joy", "pleasure", "contentment", "love", "admiration", "relief", "compassion")
+negative <- c("sadness", "guilt", "regret" ,"shame", "disappointment" , "fear", "disgust", "contempt" , "hate","anger")
+
+original_order = c(
+  "Project genesis/ first thoughts/ idea creation",
+  "Reality check",
+  "Preparations",
+  "Data collection",
+  "Data analysis",
+  "Report writing",
+  "Revisions",
+  "Waiting",
+  "Post-project stage")
+```
+
+```{r setup, include = FALSE}
+processed_data = raw_data %>% 
+  rename(interest = feeling_stage_1,
+         amusement = feeling_stage_2,
+         pride = feeling_stage_3,
+         joy = feeling_stage_4,
+         pleasure = feeling_stage_5,
+         contentment = feeling_stage_6,
+         love = feeling_stage_7, 
+         admiration = feeling_stage_8, 
+         relief = feeling_stage_9, 
+         compassion = feeling_stage_10,
+         sadness = feeling_stage_11, 
+         guilt = feeling_stage_12,
+         regret = feeling_stage_13, 
+         shame = feeling_stage_14, 
+         disappointment = feeling_stage_15, 
+         fear = feeling_stage_16, 
+         disgust = feeling_stage_17, 
+         contempt = feeling_stage_18,
+         hate = feeling_stage_19, 
+         anger = feeling_stage_20) %>% 
+  mutate(research_stage = factor(research_stage), 
+         area = factor(area),
+         gender = factor(gender),
+         position = factor(position), 
+         category_of_work = factor(category_of_work), 
+         ) %>% 
+  mutate(research_stage = recode(research_stage,	
+                                 "Post-project stage (the project has received a decision (accepted or rejected). At this point, it is either concluded or being revised and prepared for submission to another venue)"
+                                 = "Post-project stage", 
+                                 "Preparations (IRB permit, preregistration, experiment preparations)" = 
+                                   "Preparations",
+                                 "Reality check (e.g., literature search, consultation with colleagues)" =
+                                   "Reality check",
+                                 "Waiting for journal's response and revisions" = "Waiting",
+                                 "Project genesis/ first thoughts/ idea creation" = "Project genesis"
+                                 )) %>% 
+  mutate(across(all_of(feelings),
+                ~ as.numeric(as.character(.x)))) %>% 
+  mutate(feeling_general_1 = as.numeric(as.character(feeling_general_1))) %>% 
+  filter(!(dismiss_1 == "No")) %>% 
+  rename(Duration = `Duration..in.seconds.`) %>% 
+  # mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
+  mutate(NAcount = rowSums(is.na(across(interest:anger)))) %>%
+  mutate(NAcountpos = rowSums(is.na(across(interest:compassion)))) %>% 
+  mutate(NAcountneg = rowSums(is.na(across(sadness:anger))))
+
+means_data <- processed_data %>% 
+  select(
+    -Progress, -Duration, -Finished, -dismiss_1, 
+  ) %>% 
+  mutate(
+    across(interest:anger, as.numeric), 
+    pos_mean = rowMeans(across(interest:compassion), na.rm = T), 
+    neg_mean = rowMeans(across(sadness:anger), na.rm = T), 
+    across(pos_mean:neg_mean, ~ na_if(., NaN))
+  ) %>% 
+  select(
+    ResponseId, research_stage, interest:anger, category_of_work, position, area, age, country, country_other, pos_mean, neg_mean, gender
+  )
+```
+
+## descriptives
+
+-\> research area, research stage - position - Category of Work -
+country distribution + data frame of countries and numbers of
+participants
+
+## questionnaire completion?
+
+- not sure if needed to be included or not
+
+```{r}
+completion_table <- processed_data %>% 
+  select(Finished) %>% 
+  count(Finished, name = "count")
+
+processed_data$Status <- ifelse(processed_data$Finished,
+                         "Completed",
+                         "Not Completed")
+
+completion_plot <- descriptive_plots(processed_data, "Status", "Questionnaire Completion")
+
+completion_plot
+```
+
+## gender data frame:
+
+```{r}
+gender_table <- processed_data %>% 
+  select(gender) %>% 
+  count(gender, name = "n")
+
+gender_table
+```
+
+## research area
+
+```{r}
+area_descriptive = descriptive_plots(processed_data, "area", "Participants by Research Area")
+
+area_descriptive
+```
+
+## position
+
+```{r}
+position_descriptive <- descriptive_plots(processed_data, "position", "Participants by Position")
+
+position_descriptive
+```
+
+## category of work
+
+```{r}
+work_descriptive <- descriptive_plots(processed_data, "category_of_work", "Participants by Category of Work")
+
+work_descriptive
+```
+
+## country distribution
+
+```{r}
+df_country_map <- processed_data %>%
+  mutate(country = ifelse(country == "" | is.na(country), NA, country)) %>%
+  filter(!is.na(country)) %>%
+  count(country) %>%
+  mutate(country = tolower(country),
+         country = dplyr::case_when(
+           country == "united states of america" ~ "usa",
+           country == "united kingdom of great britain and northern ireland" ~ "uk",
+           TRUE ~ country
+         ))
+
+world_map <- map_data("world") %>%
+  mutate(region = tolower(region))
+
+world_map
+
+world_data <- left_join(world_map, df_country_map, by = c("region" = "country"))
+
+descriptive_plotmap = ggplot(world_data, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill = n), color = "white", linewidth = 0.1) +
+  scale_fill_gradient(
+    low = "#deebf7",
+    high = "#08519c",
+    na.value = "grey95"
+  ) +
+  labs(
+    title = "Participants by Country",
+    fill = "Participants"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank()
+)
+descriptive_plotmap
+```
+
+### data frame to rank countries
+
+```{r}
+df_country_ranked <- df_country_map %>%
+  arrange(desc(n))
+
+df_country_ranked
+```
+
+# 1. Overall pattern
+
+- kutatók éreznek
+
+## radar chart -> overall intensity
+- positive emotions more intensive than negative emotions
+
+```{r}
+## Radar chart - not yet sure if this is informative enough
+### data preparation
+emotion_means <- means_data %>% 
+  select(interest:anger) %>% 
+  pivot_longer(
+    cols = everything(),
+    names_to = "emotion", 
+    values_to = "value"
+  ) %>% 
+  mutate(
+    emotion = factor(emotion, levels = feelings)
+  ) %>% 
+  arrange(emotion) %>% 
+  group_by(emotion) %>% 
+  summarise(mean_value = mean(value, na.rm = T))
+
+pos_radar_df <- emotion_means %>% 
+  slice(1:10) %>% 
+  pivot_wider(
+    names_from = "emotion", 
+    values_from = "mean_value"
+  ) 
+
+max_values <- rep(7, ncol(pos_radar_df))  
+min_values <- rep(0, ncol(pos_radar_df))
+  
+pos_ready_df <- rbind(max_values, min_values, pos_radar_df)
+
+positive_radar <- ggplotify::as.ggplot(function() radarchart(pos_ready_df,
+          title = paste("Intensity of positive emotions")))
+
+### negative emotions
+neg_radar <- emotion_means %>% 
+  slice(11:20) %>% 
+  pivot_wider(
+    names_from = "emotion", 
+    values_from = "mean_value"
+  )
+neg_ready_df <- rbind(max_values, min_values, neg_radar)
+negative_radar <- ggplotify::as.ggplot(function() radarchart(neg_ready_df,
+          title = paste("Intensity of negative emotions")))
+
+### both radars together: 
+overall_radars <- negative_radar + positive_radar
+overall_radars
+```
+-> ha a 0-kat nem NA-ként kódolom, akkor a negatív-pozitív kontraszt sokkal nagyobb -> a negatív érzelmek átlagát lehúzza az elemszám -> ? 
+
+## 1.2. General feeling
+```{r}
+feeling_general <- processed_data %>% 
+  # filter(!(cause_general %in% c("", "-", "na", "Na", "NA", "I don't know", "I dont know"))) %>% 
+  # filter(!(feeling_general_1 == 0)) %>% 
+  select(ResponseId, feeling_general_1, cause_general) %>% 
+  mutate(valence = case_when(
+    feeling_general_1 > 0 ~ "positive",
+    feeling_general_1 < 0 ~ "negative", 
+    feeling_general_1 == 0 ~ "neutral"))
+```
+
+
+# 2. Descriptives
+
+```{r}
+
+```
+
+# 3. Research stage
+- overall erzelmek a stagekben: line chart (?) -> informative for research stage comparison
+```{r}
+by_research_stage <- sd_data(processed_data) %>% 
+  select(research_stage, all_of(feelings), sd_landscape) %>% 
+  filter(!(research_stage == "")) %>%
+  filter(!(sd_landscape < 0)) %>% 
+    mutate(across(sadness:anger, ~ 8 - .x))
+
+research_stage_emotions_positive = by_research_stage %>% 
+  select(research_stage, all_of(positive))
+research_stage_emotions_positive = emotion_function(research_stage_emotions_positive, research_stage)
+
+stage_pos_means = mean_function(research_stage_emotions_positive, research_stage) 
+
+research_stage_emotions_negative = by_research_stage %>% 
+  select(research_stage, all_of(negative)) %>% 
+    mutate(across(sadness:anger, ~ 8 - .x))
+research_stage_emotions_negative = emotion_function(research_stage_emotions_negative, research_stage)
+
+stage_neg_means = mean_function(research_stage_emotions_negative, research_stage)
+
+research_stage_emotion_chron1 =
+  left_join(
+    stage_pos_means,
+    stage_neg_means,
+    by = "research_stage"
+  ) %>%
+  rename(
+    mean_emotion_pos = mean_emotion.x,
+    mean_emotion_neg = mean_emotion.y
+  )
+
+chron_long <- research_stage_emotion_chron1 %>%
+  pivot_longer(
+    cols = c(mean_emotion_pos, mean_emotion_neg),
+    names_to = "valence",
+    values_to = "mean_emotion"
+  ) %>% 
+  mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
+  filter(!is.na(research_stage))
+
+chron_plot <- chron_long %>%
+  ggplot(aes(x = research_stage,
+             y = mean_emotion,
+             color = valence,
+             group = valence)) +
+  geom_point() +
+  geom_point(size = 3) +
+  scale_color_manual(
+    values = c(
+      mean_emotion_pos = "red",
+      mean_emotion_neg = "blue"
+    )
+  ) +
+  labs(title = "Positive vs Negative Emotions") +
+  theme_tufte() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+ 
+  scale_y_continuous(
+  limits = c(1, 7),
+  breaks = 1:7
+)
+
+chron_plot
+```
+
+```{r}
+
+```
