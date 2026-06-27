@@ -137,115 +137,6 @@ means_data <- processed_data %>%
   )
 ```
 
-## descriptives
-
--\> research area, research stage - position - Category of Work -
-country distribution + data frame of countries and numbers of
-participants
-
-## questionnaire completion?
-
-- not sure if needed to be included or not
-
-```{r}
-completion_table <- processed_data %>% 
-  select(Finished) %>% 
-  count(Finished, name = "count")
-
-processed_data$Status <- ifelse(processed_data$Finished,
-                         "Completed",
-                         "Not Completed")
-
-completion_plot <- descriptive_plots(processed_data, "Status", "Questionnaire Completion")
-
-completion_plot
-```
-
-## gender data frame:
-
-```{r}
-gender_table <- processed_data %>% 
-  select(gender) %>% 
-  count(gender, name = "n")
-
-gender_table
-```
-
-## research area
-
-```{r}
-area_descriptive = descriptive_plots(processed_data, "area", "Participants by Research Area")
-
-area_descriptive
-```
-
-## position
-
-```{r}
-position_descriptive <- descriptive_plots(processed_data, "position", "Participants by Position")
-
-position_descriptive
-```
-
-## category of work
-
-```{r}
-work_descriptive <- descriptive_plots(processed_data, "category_of_work", "Participants by Category of Work")
-
-work_descriptive
-```
-
-## country distribution
-
-```{r}
-df_country_map <- processed_data %>%
-  mutate(country = ifelse(country == "" | is.na(country), NA, country)) %>%
-  filter(!is.na(country)) %>%
-  count(country) %>%
-  mutate(country = tolower(country),
-         country = dplyr::case_when(
-           country == "united states of america" ~ "usa",
-           country == "united kingdom of great britain and northern ireland" ~ "uk",
-           TRUE ~ country
-         ))
-
-world_map <- map_data("world") %>%
-  mutate(region = tolower(region))
-
-world_map
-
-world_data <- left_join(world_map, df_country_map, by = c("region" = "country"))
-
-descriptive_plotmap = ggplot(world_data, aes(x = long, y = lat, group = group)) +
-  geom_polygon(aes(fill = n), color = "white", linewidth = 0.1) +
-  scale_fill_gradient(
-    low = "#deebf7",
-    high = "#08519c",
-    na.value = "grey95"
-  ) +
-  labs(
-    title = "Participants by Country",
-    fill = "Participants"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    plot.title = element_text(face = "bold"),
-    axis.text.x = element_blank(),
-    axis.title = element_blank(),
-    panel.grid = element_blank()
-)
-descriptive_plotmap
-```
-
-### data frame to rank countries
-
-```{r}
-df_country_ranked <- df_country_map %>%
-  arrange(desc(n))
-
-df_country_ranked
-```
-
 # 1. Overall pattern
 
 - kutatók éreznek
@@ -305,20 +196,161 @@ overall_radars
 ## 1.2. General feeling
 ```{r}
 feeling_general <- processed_data %>% 
-  # filter(!(cause_general %in% c("", "-", "na", "Na", "NA", "I don't know", "I dont know"))) %>% 
-  # filter(!(feeling_general_1 == 0)) %>% 
-  select(ResponseId, feeling_general_1, cause_general) %>% 
-  mutate(valence = case_when(
+  select(feeling_general_1, research_stage) %>% 
+  arrange(research_stage) %>% 
+  filter(!is.na(research_stage), 
+         !is.na(feeling_general_1)) %>% 
+  mutate(general_valence = case_when(
     feeling_general_1 > 0 ~ "positive",
     feeling_general_1 < 0 ~ "negative", 
     feeling_general_1 == 0 ~ "neutral"))
+
+ggplot(feeling_general, aes(x = research_stage, y = feeling_general_1, fill = general_valence)) +
+  geom_jitter(aes(colour = general_valence)) +
+  labs(
+    title = "Intensity of general feeling", 
+    x = "Research stage", 
+    y = "General feeling", 
+    fill = "General feeling", 
+    colour = "General feeling"
+  ) +
+    theme(
+      plot.title = element_text(),
+      axis.text.x = element_text(size = 9, angle = 30, hjust = 1), 
+      legend.title = element_text()
+    )
+  
+  
 ```
 
 
 # 2. Descriptives
+## questionnaire completion
+- only a data frame 
+```{r}
+completion_table <- processed_data %>% 
+  select(Finished) %>% 
+  count(Finished, name = "count") %>% 
+  mutate(Finished = recode(Finished, "True" = "completed", 
+         "False" = "not completed"))
+
+# completion_plot <- descriptive_plots(processed_data, "Status", "Questionnaire Completion")
+# completion_plot
+completion_table
+```
+
+## genders data frame:
+```{r}
+gender_table <- processed_data %>% 
+  select(gender) %>% 
+  count(gender, name = "n")
+
+gender_table
+```
+
+## research area
 
 ```{r}
+area_descriptive = descriptive_plots(processed_data, "area", "Participants by Research Area")
 
+area_descriptive
+```
+
+## position
+
+```{r}
+position_descriptive <- descriptive_plots(processed_data, "position", "Participants by Position")
+
+position_descriptive
+```
+
+## category of work
+
+```{r}
+work_descriptive <- descriptive_plots(processed_data, "category_of_work", "Participants by Category of Work")
+
+work_descriptive
+```
+
+## country distribution
+
+```{r}
+df_country_map <- processed_data %>%
+  mutate(country = ifelse(country == "" | is.na(country), NA, country)) %>%
+  filter(!is.na(country)) %>%
+  count(country) %>%
+  mutate(country = tolower(country),
+         country = dplyr::case_when(
+           country == "united states of america" ~ "usa",
+           country == "united kingdom of great britain and northern ireland" ~ "uk",
+           TRUE ~ country
+         ))
+
+country_centroids <- world_data %>%
+  filter(!is.na(n)) %>%
+  group_by(region, n) %>%
+  summarise(
+    long = mean(long, na.rm = TRUE),
+    lat  = mean(lat,  na.rm = TRUE),
+    .groups = "drop"
+  )
+
+world_map <- map_data("world") %>%
+  mutate(region = tolower(region))
+
+world_map
+
+world_data <- left_join(world_map, df_country_map, by = c("region" = "country"))
+
+descriptive_plotmap <- ggplot(world_data, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill = n), 
+               color = "white", 
+               linewidth = 0.1
+               ) +
+  # ggrepel::geom_label_repel(
+  #   data = country_centroids,
+  #   aes(x = long, y = lat, label = n),
+  #   inherit.aes = FALSE, 
+  #   size = 3, 
+  #   max.overlaps = 20
+  #   ) +
+  geom_label(
+    data = country_centroids,
+    aes(x = long, y = lat, label = n),
+    inherit.aes = FALSE,
+    size = 2.5,
+    color = "black",
+    fontface = "bold",
+    fill = "white",        
+    alpha = 0.6,           
+    label.size = 0.1,      
+    check_overlap = TRUE
+  ) +
+  scale_fill_gradient(
+    low  = "#deebf7",
+    high = "#08519c",
+    na.value = "grey95"
+  ) +
+  labs(
+    title = "Participants by Country",
+    fill  = "Participants"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title    = element_text(face = "bold"),
+    axis.text.x   = element_blank(),
+    axis.title    = element_blank(),
+    panel.grid    = element_blank()
+  )
+descriptive_plotmap
+```
+
+### data frame to rank countries
+```{r}
+df_country_ranked <- df_country_map %>%
+  arrange(desc(n))
+
+df_country_ranked
 ```
 
 # 3. Research stage
