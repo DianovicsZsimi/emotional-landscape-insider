@@ -141,7 +141,8 @@ means_data <- processed_data %>%
 
 - kutatók éreznek
 
-## radar chart -> overall intensity
+## radar chart -\> overall intensity
+
 - positive emotions more intensive than negative emotions
 
 ```{r}
@@ -191,9 +192,11 @@ negative_radar <- ggplotify::as.ggplot(function() radarchart(neg_ready_df,
 overall_radars <- negative_radar + positive_radar
 overall_radars
 ```
--> ha a 0-kat nem NA-ként kódolom, akkor a negatív-pozitív kontraszt sokkal nagyobb -> a negatív érzelmek átlagát lehúzza az elemszám -> ? 
+
+-\> ha a 0-kat nem NA-ként kódolom, akkor a negatív-pozitív kontraszt sokkal nagyobb -\> a negatív érzelmek átlagát lehúzza az elemszám -\> ?
 
 ## 1.2. General feeling
+
 ```{r}
 feeling_general <- processed_data %>% 
   select(feeling_general_1, research_stage) %>% 
@@ -223,10 +226,12 @@ ggplot(feeling_general, aes(x = research_stage, y = feeling_general_1, fill = ge
   
 ```
 
-
 # 2. Descriptives
+
 ## questionnaire completion
-- only a data frame 
+
+- only a data frame
+
 ```{r}
 completion_table <- processed_data %>% 
   select(Finished) %>% 
@@ -240,6 +245,7 @@ completion_table
 ```
 
 ## genders data frame:
+
 ```{r}
 gender_table <- processed_data %>% 
   select(gender) %>% 
@@ -345,7 +351,37 @@ descriptive_plotmap <- ggplot(world_data, aes(x = long, y = lat, group = group))
 descriptive_plotmap
 ```
 
-### data frame to rank countries
+## Europe
+
+```{r}
+plot_europe <- ggplot(world_data, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill = n), color = "white", linewidth = 0.1) +
+  geom_label(
+    data = country_centroids %>% filter(long >= -25, long <= 45, lat >= 35, lat <= 72),
+    aes(x = long, y = lat, label = n),
+    inherit.aes = FALSE,
+    size = 2.5,
+    fill = "white",
+    alpha = 0.7,
+    label.size = 0.1
+  ) +
+  scale_fill_gradient(low = "#deebf7", high = "#08519c", na.value = "grey95") +
+  coord_fixed(xlim = c(-25, 45), ylim = c(35, 72), ratio = 1.3) +
+  labs(title = "Europe") +
+  theme_minimal(base_size = 11) +
+  theme(
+    plot.title  = element_text(face = "bold"),
+    axis.text   = element_blank(),
+    axis.title  = element_blank(),
+    panel.grid  = element_blank(),
+    legend.position = "none"
+  )
+
+plot_europe
+```
+
+## data frame to rank countries
+
 ```{r}
 df_country_ranked <- df_country_map %>%
   arrange(desc(n))
@@ -354,7 +390,9 @@ df_country_ranked
 ```
 
 # 3. Research stage
-- overall erzelmek a stagekben: line chart (?) -> informative for research stage comparison
+
+- overall erzelmek a stagekben: line chart (?) -\> informative for research stage comparison
+
 ```{r}
 by_research_stage <- sd_data(processed_data) %>% 
   select(research_stage, all_of(feelings), sd_landscape) %>% 
@@ -419,6 +457,87 @@ chron_plot <- chron_long %>%
 chron_plot
 ```
 
+## positive and negative emotions separately - dotplot
 ```{r}
+research_stage_emotions_negative <- research_stage_emotions_negative %>% 
+  mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
+  filter(!is.na(research_stage))
 
+research_stage_emotions_positive <- research_stage_emotions_positive %>% 
+   mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
+  filter(!is.na(research_stage))
+
+stage_neg_long <- scatter_long(research_stage_emotions_negative)
+stage_neg_plot <- scatterplot(stage_neg_long, palette_type = "Paired")
+stage_neg_plot
+
+stage_pos_long <- scatter_long(research_stage_emotions_positive)
+stage_pos_plot <- scatterplot(stage_pos_long, palette_type = "Spectral")
+stage_pos_plot
+
+## Overall plot
+mean_emotions_stage <- stage_neg_plot + stage_pos_plot
+mean_emotions_stage
 ```
+
+## Post-Project stage
+```{r}
+post_project <- processed_data %>% 
+  filter(
+    research_stage == "Post-project stage"
+  ) %>% 
+  select(-dismiss_1, -StartDate, -EndDate, -Status, -Progress, -Duration, -Finished, -RecordedDate, -DistributionChannel, -UserLanguage) 
+
+# Accepted and published - mean intensity of emotions
+post_project1 <- post_project %>%  
+  filter(
+    Q22 == "Accepted and published"
+  ) %>% 
+  select(-Q22_6_TEXT) 
+
+post_project1_long <- post_project1 %>% 
+  longer_heatmap() %>% 
+  sum_analysis()
+
+post_project1_plot <- post_project_plot(post_project1_long, "Accepted and Published: mean intensity of all emotions")
+  
+post_project1_plot
+```
+most intense emotions if the article was accepted and published: interest, joy, pride, pleasure, relief, contentment (+ admiration, amusement)
+
+```{r}
+# Accepted but not yet published
+post_project2 <- post_project %>% 
+  filter(
+    Q22 == "Accepted but not yet published"
+  ) %>% 
+  select(-Q22_6_TEXT) %>% 
+  filter(NAcount < 15)
+
+post_project2_long <- post_project2 %>% 
+  longer_heatmap() %>% 
+  sum_analysis()
+
+post_project2_plot <- post_project_plot(post_project2_long, "Accepted but not yet published: mean intensity of all emotions")
+post_project2_plot
+```
+missing negative values - most likely due to the small sample (n = 12). only 2 answers contained negative emotions, yet the intensity was definitely not high (rather moderate-low). 
+
+### 4.3. Rejected (rejected and abandoned, rejected and being revised, rejected and postponed)
+```{r}
+post_project3 <- post_project %>% 
+  filter(
+    Q22 %in% c("Rejected and abandoned", "Rejected and being revised", "Rejected and postponed")
+  ) %>% 
+  select(-Q22_6_TEXT)
+
+post_project3_long <- post_project3 %>% 
+  longer_heatmap() %>%
+  sum_analysis()
+
+post_project3_plot <- post_project_plot(post_project3_long, "Rejected: mean intensity of all emotions")
+post_project3_plot
+```
+
+# Waiting stage, reality check stage
+negative emotions slightly more intense, specifically: fear, 

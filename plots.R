@@ -94,3 +94,49 @@ mean_function = function(data, catvar) {
     select({{catvar}}, mean_emotion) %>% 
     arrange(mean_emotion)
 }
+
+# Research Stage - geom_point plot functions 
+## prepare data
+scatter_long <- function(data) {
+  data %>% 
+    pivot_longer(
+      cols = starts_with("mean_"),
+      names_to = "emotion",
+      values_to = "mean_score"
+    ) %>% 
+    mutate(emotion = gsub("mean_", "", emotion))
+  }
+
+scatterplot <- function(data, palette_type) {
+  ggplot(data, aes(x = research_stage, y = mean_score, colour = emotion)) +
+    geom_point(size = 3) +
+    labs(
+      title = "Mean Emotion Scores by Research Stage",
+      x = "Emotion",
+      y = "Mean Score",
+      color = "Research Stage"
+    ) +
+    theme_minimal(base_size = 10) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+          legend.key.size = unit(0.4, "cm"),
+          legend.text = element_text(size = 8),
+          legend.title = element_text(size = 9)) +
+    scale_y_continuous(limits = c(1, 7)) +
+    scale_color_brewer(palette = palette_type)
+  }
+
+# Post project stage 
+## pivot_longer, prepare df for heatmaps 
+longer_heatmap = function(df) {
+  df %>% 
+    pivot_longer(
+      cols = interest:anger,
+      names_to = "emotion", 
+      values_to = "intensity", 
+      values_transform = list(intensity = as.numeric
+      )) %>% 
+    select(
+      ResponseId, emotion, intensity) %>% 
+    mutate(emotion = factor(emotion, 
+                            levels = unique(emotion)))
+}
