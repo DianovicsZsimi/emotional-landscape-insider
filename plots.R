@@ -140,3 +140,60 @@ longer_heatmap = function(df) {
     mutate(emotion = factor(emotion, 
                             levels = unique(emotion)))
 }
+## functions for the mean_intensity plots
+sum_analysis = function(df) {
+  df %>% 
+    group_by(emotion) %>% 
+    summarise(mean_intensity = mean(intensity, na.rm = T))
+}
+
+## post-project plot: 
+post_project_plot <- function(data, title) {
+  data %>% 
+  ggplot(aes(x = emotion,
+             y = mean_intensity)) +
+    coord_cartesian(ylim = c(1,7)) +
+    scale_y_continuous(breaks = seq(0, 7, by = 2),
+                       expand = c(0,0)) +
+    geom_point(na.rm = T) +
+    theme(
+      axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
+    labs(title = title, 
+         y = "", 
+         x = "")}
+
+pos_neg_classify = function(df) {
+  df %>% 
+    mutate(
+      age = as.numeric(age), 
+      gender = as.factor(gender)
+    ) %>% 
+    filter(!is.na(age), !is.na(gender)) 
+}
+
+age_grouping = function(df) {
+  df %>% 
+    select(
+      ResponseId, age, pos_mean, neg_mean
+    ) %>% 
+    mutate(
+      age_group = 
+        case_when(
+          (age >= 20 & age <= 30) ~ "20-30", 
+          (age >= 31 & age <= 40) ~ "31-40", 
+          (age >= 41 & age <= 50) ~ "41-50", 
+          (age >= 51 & age <= 60) ~ "51-60", 
+          (age >= 61 & age <= 70) ~ "61-70", 
+          (age >= 71 & age <= 80) ~ "71-80", 
+          (age >= 81 & age <= 90) ~ "81-90", 
+          (age >= 91 & age < 101) ~ "91-100", 
+          age == 100 ~ "91-100"
+        ), ## creating age groups, then converting the age_group variable to factor, so that the age_pyramid can be made
+      age_group = factor(
+        age_group,
+        levels = c(
+          "20-30","31-40","41-50","51-60",
+          "61-70","71-80","81-90","91-100")
+      )
+    )
+}

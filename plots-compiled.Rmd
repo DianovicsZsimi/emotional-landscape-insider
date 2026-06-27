@@ -505,8 +505,8 @@ post_project1_plot
 ```
 most intense emotions if the article was accepted and published: interest, joy, pride, pleasure, relief, contentment (+ admiration, amusement)
 
+### Accepted but not yet published
 ```{r}
-# Accepted but not yet published
 post_project2 <- post_project %>% 
   filter(
     Q22 == "Accepted but not yet published"
@@ -540,4 +540,57 @@ post_project3_plot
 ```
 
 # Waiting stage, reality check stage
-negative emotions slightly more intense, specifically: fear, 
+negative emotions slightly more intense, specifically: fear? 
+
+# By age: Where positive or negative emotions were more dominant 
+```{r}
+## Data preparation: 
+averages_data <- processed_data %>% 
+  select(
+    -Progress, -Duration, -Finished, -dismiss_1, 
+  ) %>% 
+  mutate(
+    across(interest:anger, as.numeric), 
+    pos_mean = rowMeans(across(interest:compassion), na.rm = T), 
+    neg_mean = rowMeans(across(sadness:anger), na.rm = T), 
+    across(pos_mean:neg_mean, ~ na_if(., NaN))
+  ) %>% 
+  select(
+    ResponseId, research_stage, interest:anger, category_of_work, position, area, age, country, country_other, pos_mean, neg_mean, gender
+  ) 
+
+age_data <- averages_data %>% 
+  age_grouping() %>% 
+  filter(!is.na(age), 
+         !(is.na(pos_mean)),
+         !(is.na(neg_mean))) %>% 
+  mutate(valence = ifelse(pos_mean > neg_mean, "positive", "negative")) %>% 
+  arrange(age_group) %>% 
+  group_by(age_group) %>% 
+  summarise(
+    positive_mean = mean(pos_mean), 
+    negative_mean = mean(neg_mean)
+  ) %>% 
+  pivot_longer(
+    cols = c(positive_mean, negative_mean), 
+    names_to = "valence", 
+    values_to = "mean_value"
+  )
+
+age_proportional <- age_data %>%
+  mutate(mean_plot = ifelse(valence == "negative_mean", -mean_value, mean_value)) %>% 
+  group_by(age_group) %>% 
+  mutate(prop = mean_value/sum(mean_value))
+
+age_plot <- ggplot(age_proportional, aes(x = age_group, y = prop, fill = valence)) +
+  geom_col(width = 0.7) +
+  # geom_hline(yintercept = 0.5) +
+  scale_y_continuous(labels = percent, limits = c(0, 1)) +
+  scale_fill_manual(values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue")) +
+  theme_tufte() +
+  labs(y = "Proportion of total emotional intensity", x = "") +
+  coord_flip() +
+  labs(title = "Proportion of positive and negative emotions\nwithin the age groups")
+age_plot 
+```
+
