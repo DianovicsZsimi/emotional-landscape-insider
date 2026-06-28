@@ -72,6 +72,15 @@ original_order = c(
   "Revisions",
   "Waiting",
   "Post-project stage")
+
+position_order = c("Other", 
+                   "Non-academic researcher",
+                   "Full professor",
+                   "Associate professor", 
+                   "Assistant professor",
+                   "Postdoc",
+                   "PhD student",
+                   "Research assistant")
 ```
 
 ```{r setup, include = FALSE}
@@ -292,6 +301,13 @@ df_country_map <- processed_data %>%
            TRUE ~ country
          ))
 
+world_map <- map_data("world") %>%
+  mutate(region = tolower(region))
+
+world_map
+
+world_data <- left_join(world_map, df_country_map, by = c("region" = "country"))
+
 country_centroids <- world_data %>%
   filter(!is.na(n)) %>%
   group_by(region, n) %>%
@@ -301,12 +317,6 @@ country_centroids <- world_data %>%
     .groups = "drop"
   )
 
-world_map <- map_data("world") %>%
-  mutate(region = tolower(region))
-
-world_map
-
-world_data <- left_join(world_map, df_country_map, by = c("region" = "country"))
 
 descriptive_plotmap <- ggplot(world_data, aes(x = long, y = lat, group = group)) +
   geom_polygon(aes(fill = n), 
@@ -546,18 +556,7 @@ negative emotions slightly more intense, specifically: fear?
 ```{r}
 ## Data preparation: 
 averages_data <- processed_data %>% 
-  select(
-    -Progress, -Duration, -Finished, -dismiss_1, 
-  ) %>% 
-  mutate(
-    across(interest:anger, as.numeric), 
-    pos_mean = rowMeans(across(interest:compassion), na.rm = T), 
-    neg_mean = rowMeans(across(sadness:anger), na.rm = T), 
-    across(pos_mean:neg_mean, ~ na_if(., NaN))
-  ) %>% 
-  select(
-    ResponseId, research_stage, interest:anger, category_of_work, position, area, age, country, country_other, pos_mean, neg_mean, gender
-  ) 
+  averages_prep()
 
 age_data <- averages_data %>% 
   age_grouping() %>% 
@@ -577,20 +576,158 @@ age_data <- averages_data %>%
     values_to = "mean_value"
   )
 
-age_proportional <- age_data %>%
+age_proportional <- age_data %>% 
   mutate(mean_plot = ifelse(valence == "negative_mean", -mean_value, mean_value)) %>% 
-  group_by(age_group) %>% 
-  mutate(prop = mean_value/sum(mean_value))
+    group_by(age_group) %>% 
+    mutate(prop = mean_value/sum(mean_value))
 
 age_plot <- ggplot(age_proportional, aes(x = age_group, y = prop, fill = valence)) +
-  geom_col(width = 0.7) +
-  # geom_hline(yintercept = 0.5) +
-  scale_y_continuous(labels = percent, limits = c(0, 1)) +
-  scale_fill_manual(values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue")) +
-  theme_tufte() +
-  labs(y = "Proportion of total emotional intensity", x = "") +
-  coord_flip() +
-  labs(title = "Proportion of positive and negative emotions\nwithin the age groups")
+    geom_col(width = 0.7) +
+    # geom_hline(yintercept = 0.5) +
+    scale_y_continuous(labels = percent, limits = c(0, 1)) +
+    scale_fill_manual(
+      values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
+      name = "Valence",
+      labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
+    ) +
+    theme_tufte() +
+    labs(y = "Proportion of total emotional intensity", 
+         x = "", 
+         title = "Proportion of total emotional intensity\nwithin the age groups") +
+    coord_flip()
 age_plot 
 ```
 
+# Area
+```{r}
+area_data <- averages_data %>% 
+  select(
+    ResponseId, area, pos_mean, neg_mean
+  ) %>% 
+  filter(!is.na(area), 
+         !(is.na(pos_mean)),
+         !(is.na(neg_mean))) %>% 
+  mutate(valence = ifelse(pos_mean > neg_mean, "positive", "negative")) %>% 
+  arrange(area) %>% 
+  group_by(area) %>% 
+  summarise(
+    positive_mean = mean(pos_mean), 
+    negative_mean = mean(neg_mean)
+  ) %>% 
+  pivot_longer(
+    cols = c(positive_mean, negative_mean), 
+    names_to = "valence", 
+    values_to = "mean_value"
+  )
+
+area_proportional <- area_data %>% 
+  mutate(mean_plot = ifelse(valence == "negative_mean", -mean_value, mean_value)) %>% 
+  group_by(area) %>% 
+  mutate(prop = mean_value/sum(mean_value))
+
+area_plot <- ggplot(area_proportional, aes(x = area, y = prop, fill = valence)) +
+    geom_col(width = 0.7) +
+    # geom_hline(yintercept = 0.5) +
+    scale_y_continuous(labels = percent, limits = c(0, 1)) +
+    scale_fill_manual(
+      values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
+      name = "Valence",
+      labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
+    ) +
+    theme_tufte() +
+    labs(y = "Proportion of total emotional intensity", 
+         x = "", 
+         title = "Proportion of total emotional intensity\nwithin the areas of research") +
+    coord_flip()
+area_plot
+```
+
+# Category of work 
+```{r}
+work_data <- averages_data %>% 
+  select(
+    ResponseId, category_of_work, pos_mean, neg_mean
+  ) %>% 
+  filter(!is.na(category_of_work), 
+         !(is.na(pos_mean)),
+         !(is.na(neg_mean))) %>% 
+  mutate(valence = ifelse(pos_mean > neg_mean, "positive", "negative")) %>% 
+  arrange(category_of_work) %>% 
+  group_by(category_of_work) %>% 
+  summarise(
+    positive_mean = mean(pos_mean), 
+    negative_mean = mean(neg_mean)
+  ) %>% 
+  pivot_longer(
+    cols = c(positive_mean, negative_mean), 
+    names_to = "valence", 
+    values_to = "mean_value"
+  )
+
+work_proportional <- work_data %>% 
+  mutate(mean_plot = ifelse(valence == "negative_mean", -mean_value, mean_value)) %>% 
+  group_by(category_of_work) %>% 
+  mutate(prop = mean_value/sum(mean_value))
+
+work_plot <- ggplot(work_proportional, aes(x = category_of_work, y = prop, fill = valence)) +
+    geom_col(width = 0.7) +
+    # geom_hline(yintercept = 0.5) +
+    scale_y_continuous(labels = percent, limits = c(0, 1)) +
+    scale_fill_manual(
+      values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
+      name = "Valence",
+      labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
+    ) +
+    theme_tufte() +
+    labs(y = "Proportion of total emotional intensity", 
+         x = "", 
+         title = "Proportion of total emotional intensity\nwithin the categories of academic work") +
+    coord_flip()
+work_plot
+```
+
+# Position
+```{r}
+position_data <- averages_data %>% 
+  select(
+    ResponseId, position, pos_mean, neg_mean
+  ) %>% 
+  filter(!is.na(position), 
+         !(is.na(pos_mean)),
+         !(is.na(neg_mean))) %>% 
+  mutate(valence = ifelse(pos_mean > neg_mean, "positive", "negative")) %>% 
+  mutate(position = factor(position, levels = position_order)) %>% 
+  arrange(position) %>% 
+  group_by(position) %>% 
+  summarise(
+    positive_mean = mean(pos_mean), 
+    negative_mean = mean(neg_mean)
+  ) %>% 
+  pivot_longer(
+    cols = c(positive_mean, negative_mean), 
+    names_to = "valence", 
+    values_to = "mean_value"
+  )
+
+position_proportional <- position_data %>% 
+  mutate(mean_plot = ifelse(valence == "negative_mean", -mean_value, mean_value)) %>% 
+  group_by(position) %>% 
+  mutate(prop = mean_value/sum(mean_value))
+
+position_plot <- ggplot(position_proportional, aes(x = position, y = prop, fill = valence)) +
+    geom_col(width = 0.7) +
+    # geom_hline(yintercept = 0.5) +
+    scale_y_continuous(labels = percent, limits = c(0, 1)) +
+    scale_fill_manual(
+      values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
+      name = "Valence",
+      labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
+    ) +
+    theme_tufte() +
+    labs(y = "Proportion of total emotional intensity", 
+         x = "", 
+         title = "Proportion of total emotional intensity\nacross positions") +
+    coord_flip()
+position_plot
+```
+- ?? missing values at associate professor 

@@ -197,3 +197,49 @@ age_grouping = function(df) {
       )
     )
 }
+
+# Data preparation for proportional plots
+averages_prep <- function(data) {
+  data %>% 
+    select(
+      -Progress, -Duration, -Finished, -dismiss_1, 
+    ) %>% 
+      mutate(
+        across(interest:anger, as.numeric), 
+        pos_mean = rowMeans(across(interest:compassion), na.rm = T), 
+        neg_mean = rowMeans(across(sadness:anger), na.rm = T), 
+        across(pos_mean:neg_mean, ~ na_if(., NaN))
+      ) %>% 
+      select(
+        ResponseId, research_stage, interest:anger, category_of_work, position, area, age, country, country_other, pos_mean, neg_mean, gender
+      ) 
+}
+
+proportional_data <- function(data, variable) {
+  data %>% 
+  select(
+    ResponseId, variable, pos_mean, neg_mean
+  ) %>% 
+  filter(!is.na(variable), 
+         !(is.na(pos_mean)),
+         !(is.na(neg_mean))) %>% 
+  mutate(valence = ifelse(pos_mean > neg_mean, "positive", "negative")) %>% 
+  arrange(area) %>% 
+  group_by(area) %>% 
+  summarise(
+    positive_mean = mean(pos_mean), 
+    negative_mean = mean(neg_mean)
+  ) %>% 
+  pivot_longer(
+    cols = c(positive_mean, negative_mean), 
+    names_to = "valence", 
+    values_to = "mean_value"
+  )
+}
+
+prop_preparation = function(data, variable) {
+  data %>% 
+    mutate(mean_plot = ifelse(valence == "negative_mean", -mean_value, mean_value)) %>% 
+    group_by(variable) %>% 
+    mutate(prop = mean_value/sum(mean_value))
+}
