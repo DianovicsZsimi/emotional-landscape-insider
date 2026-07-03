@@ -368,7 +368,7 @@ continent_emotions_mean_function_neg <- function(data, continent_name) {
 # Functions Barbi
 ## =======================================================================================================
 
-#Categorical Distribution Plot Function
+# Categorical Distribution Plot Function
 plot_distribution_categorical <- function(data,
                                           variable_name,
                                           title,

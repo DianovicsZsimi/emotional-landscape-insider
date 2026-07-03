@@ -28,7 +28,9 @@ if (!require("maps")) install.packages("maps")
 if (!require("gganimate")) install.packages("gganimate")
 if (!require("magick")) install.packages("magick")
 if (!require("fmsb")) install.packages("fmsb")
-
+if (!require("viridis")) install.packages("viridis")
+if (!require("ggrepel")) install.packages("ggrepel")
+if (!require("countrycode")) install.packages("countrycode")
 
 
 library(tidyverse)
@@ -47,6 +49,9 @@ library(maps)
 library(gganimate)
 library(magick)
 library(fmsb)
+library(countrycode)
+library(viridis)
+library(ggrepel)
 ```
 
 ```{r setup, include = FALSE}
@@ -731,3 +736,139 @@ position_plot <- ggplot(position_proportional, aes(x = position, y = prop, fill 
 position_plot
 ```
 - ?? missing values at associate professor 
+
+# Countries 
+```{r}
+country_emotions = processed_data %>%  
+  select(ResponseId, country, country_other, all_of(feelings)) %>% 
+  # mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
+mutate(
+  mutate(across(all_of(feelings),
+                ~ as.numeric(as.character(.x))))) %>% 
+  pivot_longer(cols = c(country, country_other), 
+               names_to = "group", 
+               values_to = "country") %>% 
+  filter(!(country == "")) %>% 
+  filter(!(ResponseId == "R_7YyTHrAj3Gc1fHP")) 
+
+
+target_id = "R_7gbaE2EDWdQ3wOo"
+target_text = "Also Germany Australia and recently China"
+
+
+split_row = country_emotions %>%
+  filter(ResponseId == target_id, country == target_text) %>%
+  mutate(
+    country = str_replace_all(country, "(?<=[a-z])(?=[A-Z])", " "),
+    country = str_remove(country, "^Also\\s+"),
+    country = str_remove(country, "\\s+ and recently\\s+"),
+    country = str_squish(country),
+    country = str_replace_all(country, "\\s+", ",")) %>%
+  separate_rows(country, sep = ",")
+
+rest <- country_emotions %>%
+  filter(!(ResponseId == target_id & country == target_text))
+
+country_emotions_clean <- bind_rows(split_row, rest)
+
+country_emotions_clean = country_emotions_clean %>% 
+  mutate(country = if_else(country == "Did my PhD in the US graduated in August and moved to Australia for postdoc", "United States of America", country)) %>% 
+  mutate(country = if_else(country == "Uk", "UK", country)) %>% 
+  mutate(country = if_else(country == "i work from home from italy", "Italy", country)) %>% 
+  mutate(country = if_else(country == "Israel I am doing a collaboration in italy", "Israel", country)) %>% # because they indicated Italy in the "country" option
+  mutate(country = if_else(country == "Actually Im from Palestine unfortunatley there is no mention for state of Palestine", "Israel", country)) %>% # ???
+  mutate(country = if_else(country == "China ", "China", country)) %>% 
+  mutate(country = if_else(country == "Makedonija", "Northern Macedonia", country)) %>% 
+  mutate(country = if_else(country == "I am from Canada and have done research there", "Canada", country)) %>% 
+  mutate(country = if_else(country == "south africa", "South Africa", country)) %>% 
+  mutate(country = if_else(country == "England", "United Kingdom of Great Britain and Northern Ireland", country)) %>% 
+  filter(!(country == "Africa")) %>% 
+mutate(country = if_else(country == "N Macedonia", "North Macedonia", country)) %>% 
+  filter(!(country %in% c("and","recently"))) %>% 
+  mutate(country = if_else(country == "United States of America", "USA", country)) %>% 
+  mutate(country = if_else(country == "United Kingdom of Great Britain and Northern Ireland", "UK", country))
+
+country_emotions_clean <- bind_rows(
+  country_emotions_clean %>%
+    filter(ResponseId == "R_2GQ90ZxUHZ6JyFB", country == 	
+             "Burkina Faso USA") %>%
+    mutate(country = str_replace(country, "\\s+USA\\b", ",USA")) %>%  # insert delimiter before USA
+    separate_rows(country, sep = ","),
+  country_emotions_clean%>%
+    filter(!(ResponseId == "R_2GQ90ZxUHZ6JyFB"  & country == "Burkina Faso USA"))) 
+
+country_emotions_clean = country_emotions_clean %>%  
+  mutate(country = factor(country))
+
+positive_countries = country_emotions_clean %>% 
+  select(ResponseId, country, all_of(positive)) %>% 
+  mutate(mean_feeling = rowMeans(across(interest:compassion), na.rm = TRUE)) %>% 
+  arrange(country) %>% 
+  mutate(country = factor(country)) %>% 
+  group_by(country) %>% 
+  filter(n() >= 10) %>% 
+  ungroup() %>% 
+  group_by(country) %>% 
+  summarise(
+    mean_emotion = mean(mean_feeling, na.rm = TRUE), 
+    .groups = "drop"
+  ) %>% 
+  arrange(mean_emotion) %>% 
+  mutate(country_iso = countrycode::countrycode(sourcevar = country, origin = "country.name", destination = "iso3c"))
+
+negative_countries = country_emotions_clean %>% 
+  select(ResponseId, country, all_of(negative)) %>% 
+  mutate(mean_feeling = rowMeans(across(sadness:anger), na.rm = TRUE)) %>% 
+  arrange(country) %>% 
+  mutate(country = factor(country)) %>% 
+  group_by(country) %>% 
+  filter(n() >= 10) %>% 
+  ungroup() %>% 
+  group_by(country) %>% 
+  summarise(
+    mean_emotion = mean(mean_feeling, na.rm = TRUE), 
+    .groups = "drop"
+  ) %>% 
+  arrange(mean_emotion) %>% 
+  mutate(country_iso = countrycode::countrycode(sourcevar = country, origin = "country.name", destination = "iso3c"))
+```
+since altogether, there are 71 countries, many of which have only 1-2 respondents, this plot only visualizes the mean positive emotional intensity of the countries with at least 10 respondents. 
+
+Plots: scatterplot
+```{r}
+countries_pos <- ggplot(positive_countries, aes(x = country, y = mean_emotion, colour = country)) +
+  geom_point(size = 3) + 
+  ggrepel::geom_text_repel(aes(label = country_iso)) +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(angle = 45, hjust = 1),
+          plot.title = element_text(size = 9, 
+                                    hjust = 0.5)) +
+  scale_y_continuous(limits = c(1, 7)) +
+  labs(
+      title = "Positive mean emotional intensity by countries\n(with at least 10 respondents)",
+      x = "",
+      y = ""
+    )
+
+countries_pos
+```
+
+Negative plot
+```{r}
+countries_neg <- ggplot(negative_countries, aes(x = country, y = mean_emotion, colour = country)) +
+  geom_point(size = 3) + 
+  ggrepel::geom_text_repel(aes(label = country_iso)) +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(angle = 45, hjust = 1),
+          plot.title = element_text(size = 9, 
+                                    hjust = 0.5)) +
+  scale_y_continuous(limits = c(0, 5)) +
+  labs(
+      title = "Negative mean emotional intensity by countries\n(with at least 10 respondents)",
+      x = "",
+      y = ""
+    )
+
+countries_neg
+```
+
