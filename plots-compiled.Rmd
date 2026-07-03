@@ -1,15 +1,15 @@
 ---
-title: "plots-compiled"
+title: "Emotional Landscape of Empirical Research Projects"
 author: "Boglarka Ludmany"
 date: "2026-06-23"
 output: html_document
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 ```
 
-```{r setup, include = FALSE}
+```{r setup, echo = FALSE}
 # Updated library loading with checks for installation
 
 if (!require("tidyverse")) install.packages("tidyverse")
@@ -54,7 +54,7 @@ library(viridis)
 library(ggrepel)
 ```
 
-```{r setup, include = FALSE}
+```{r setup, echo = FALSE}
 source("plots.R")
 data <- read.csv("data/full_data.csv", na.strings = c("", "NA", "NaN"))
 
@@ -88,7 +88,7 @@ position_order = c("Other",
                    "Research assistant")
 ```
 
-```{r setup, include = FALSE}
+```{r setup, echo = FALSE}
 processed_data = raw_data %>% 
   rename(interest = feeling_stage_1,
          amusement = feeling_stage_2,
@@ -153,13 +153,11 @@ means_data <- processed_data %>%
 
 # 1. Overall pattern
 
-- kutatók éreznek
+The overall pattern represents that researchers reported both positive and negative emotional intensity in relation to their work. 
 
-## radar chart -\> overall intensity
+## Overall intensity of positive and negative emotions 
 
-- positive emotions more intensive than negative emotions
-
-```{r}
+```{r setup, echo = FALSE}
 ## Radar chart - not yet sure if this is informative enough
 ### data preparation
 emotion_means <- means_data %>% 
@@ -206,12 +204,14 @@ negative_radar <- ggplotify::as.ggplot(function() radarchart(neg_ready_df,
 overall_radars <- negative_radar + positive_radar
 overall_radars
 ```
-
--\> ha a 0-kat nem NA-ként kódolom, akkor a negatív-pozitív kontraszt sokkal nagyobb -\> a negatív érzelmek átlagát lehúzza az elemszám -\> ?
+As can be seen on the radar charts, positive emotions tended to be more intensely experienced than negative emotions. Interest was reported with the greatest intensity, followed by pride and contentment. 
+Among negative emotions, fear and disappointment exhibited the highest mean intensity. However, their intensity remained lower than that of positive emotions.  
 
 ## 1.2. General feeling
 
-```{r}
+Regarding the intensity of the general feeling (represented on a scale of -3 to 3), the visualization includes the research stages. 
+
+```{r setup, echo = FALSE}
 feeling_general <- processed_data %>% 
   select(feeling_general_1, research_stage) %>% 
   arrange(research_stage) %>% 
@@ -225,7 +225,7 @@ feeling_general <- processed_data %>%
 ggplot(feeling_general, aes(x = research_stage, y = feeling_general_1, fill = general_valence)) +
   geom_jitter(aes(colour = general_valence)) +
   labs(
-    title = "Intensity of general feeling", 
+    title = "Intensity of general feeling throughout the research stages", 
     x = "Research stage", 
     y = "General feeling", 
     fill = "General feeling", 
@@ -236,17 +236,14 @@ ggplot(feeling_general, aes(x = research_stage, y = feeling_general_1, fill = ge
       axis.text.x = element_text(size = 9, angle = 30, hjust = 1), 
       legend.title = element_text()
     )
-  
-  
 ```
+Across the different research stages, the overall emotional profile was predominantly positive. Although there were still a notable amount of negative and neutral answers, the general emotional profile was positive. 
+The strongest positive emotional responses were reported during the Data Analysis, the Report Writing, and the Data Collection stages. 
 
 # 2. Descriptives
 
-## questionnaire completion
-
-- only a data frame
-
-```{r}
+#### questionnaire completion
+```{r setup, echo = FALSE}
 completion_table <- processed_data %>% 
   select(Finished) %>% 
   count(Finished, name = "count") %>% 
@@ -258,7 +255,7 @@ completion_table <- processed_data %>%
 completion_table
 ```
 
-## genders data frame:
+#### Genders
 
 ```{r}
 gender_table <- processed_data %>% 
@@ -738,7 +735,7 @@ position_plot
 - ?? missing values at associate professor 
 
 # Countries 
-```{r}
+```{r include = FALSE, message=FALSE, warning=FALSE}
 country_emotions = processed_data %>%  
   select(ResponseId, country, country_other, all_of(feelings)) %>% 
   # mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
@@ -811,10 +808,12 @@ positive_countries = country_emotions_clean %>%
   group_by(country) %>% 
   summarise(
     mean_emotion = mean(mean_feeling, na.rm = TRUE), 
+    n = n(), 
     .groups = "drop"
   ) %>% 
   arrange(mean_emotion) %>% 
-  mutate(country_iso = countrycode::countrycode(sourcevar = country, origin = "country.name", destination = "iso3c"))
+  mutate(
+    country_iso = countrycode::countrycode(sourcevar = country, origin = "country.name", destination = "iso3c"))
 
 negative_countries = country_emotions_clean %>% 
   select(ResponseId, country, all_of(negative)) %>% 
@@ -826,49 +825,72 @@ negative_countries = country_emotions_clean %>%
   ungroup() %>% 
   group_by(country) %>% 
   summarise(
-    mean_emotion = mean(mean_feeling, na.rm = TRUE), 
+    mean_emotion = mean(mean_feeling, na.rm = TRUE),
+    n = n(),
     .groups = "drop"
   ) %>% 
   arrange(mean_emotion) %>% 
   mutate(country_iso = countrycode::countrycode(sourcevar = country, origin = "country.name", destination = "iso3c"))
 ```
-since altogether, there are 71 countries, many of which have only 1-2 respondents, this plot only visualizes the mean positive emotional intensity of the countries with at least 10 respondents. 
 
-Plots: scatterplot
+Altogether, 71 countries were recorded in the dataset, many of which were represented by only 1-2 respondents. Therefore the visualizations only include countries with at least 10 respondents. 
+
+#### Mean emotional intensity regarding positive emotions by countries 
+
 ```{r}
-countries_pos <- ggplot(positive_countries, aes(x = country, y = mean_emotion, colour = country)) +
+countries_pos <- ggplot(positive_countries, aes(x = reorder(country, mean_emotion), y = mean_emotion, colour = country)) +
   geom_point(size = 3) + 
   ggrepel::geom_text_repel(aes(label = country_iso)) +
   theme(legend.position = "none", 
         axis.text.x = element_text(angle = 45, hjust = 1),
-          plot.title = element_text(size = 9, 
-                                    hjust = 0.5)) +
+          plot.title = element_text(hjust = 0.5)) +
   scale_y_continuous(limits = c(1, 7)) +
   labs(
-      title = "Positive mean emotional intensity by countries\n(with at least 10 respondents)",
+      title = "Positive mean emotional intensity by countries (with at least 10 respondents)",
       x = "",
       y = ""
     )
 
 countries_pos
 ```
-
-Negative plot
+Indian, Spanish, Brazilian and Turkish respondents indicated the highest values regarding positive emotions (mean emotional intensity was above 4). 
+The following table summarises the numbers of respondents (in ascending order) from each country represented on the plot. 
 ```{r}
-countries_neg <- ggplot(negative_countries, aes(x = country, y = mean_emotion, colour = country)) +
+pos_counts <- positive_countries %>% 
+  select(
+    n, country
+  ) %>% 
+  arrange(n)
+pos_counts
+```
+
+#### Mean emotional intensity regarding positive emotions by countries 
+
+```{r}
+countries_neg <- ggplot(negative_countries, aes(x = reorder(country, mean_emotion), y = mean_emotion, colour = country)) +
   geom_point(size = 3) + 
   ggrepel::geom_text_repel(aes(label = country_iso)) +
   theme(legend.position = "none", 
         axis.text.x = element_text(angle = 45, hjust = 1),
-          plot.title = element_text(size = 9, 
-                                    hjust = 0.5)) +
-  scale_y_continuous(limits = c(0, 5)) +
+          plot.title = element_text(hjust = 0.5)) +
+  scale_y_continuous(limits = c(0, 7)) +
   labs(
-      title = "Negative mean emotional intensity by countries\n(with at least 10 respondents)",
+      title = "Negative mean emotional intensity by countries (with at least 10 respondents)",
       x = "",
       y = ""
     )
 
 countries_neg
 ```
+The differences in mean values regarding negative emotions is not substantial: Belgian respondents' mean emotional intensity was 0.8833, and mean emotional intensity regarding Turkey was 2.2283. 
+The numbers of respondents are summarised in the following table: 
+```{r}
+neg_counts <- negative_countries %>% 
+  select(
+    n, country
+  ) %>% 
+  arrange(n)
+neg_counts
+```
 
+Notably, respondents from Turkey also reported comparatively high levels of both positive and negative emotional intensity relative to respondents from other countries.
