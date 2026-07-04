@@ -1,7 +1,6 @@
 ---
 title: "Emotional Landscape of Empirical Research Projects"
 author: "Boglarka Ludmany"
-date: "2026-06-23"
 output: html_document
 ---
 
@@ -32,6 +31,7 @@ if (!require("fmsb")) install.packages("fmsb")
 if (!require("viridis")) install.packages("viridis")
 if (!require("ggrepel")) install.packages("ggrepel")
 if (!require("countrycode")) install.packages("countrycode")
+if (!require("flextable")) install.packages("flextable")
 
 
 library(tidyverse)
@@ -53,6 +53,7 @@ library(fmsb)
 library(countrycode)
 library(viridis)
 library(ggrepel)
+library(flextable)
 ```
 
 ```{r}
@@ -152,7 +153,7 @@ means_data <- processed_data %>%
   )
 ```
 
-# 1. Overall pattern
+# Overall pattern
 
 The overall pattern represents that researchers reported both positive and negative emotional intensity in relation to their work.
 
@@ -208,7 +209,7 @@ overall_radars
 
 As can be seen on the radar charts, positive emotions tended to be more intensely experienced than negative emotions. Interest was reported with the greatest intensity, followed by pride and contentment. Among negative emotions, fear and disappointment exhibited the highest mean intensity. However, their intensity remained lower than that of positive emotions.
 
-## 1.2. General feeling
+## General feeling
 
 Regarding the intensity of the general feeling (represented on a scale of -3 to 3), the visualization includes the research stages.
 
@@ -223,7 +224,7 @@ feeling_general <- processed_data %>%
     feeling_general_1 < 0 ~ "negative", 
     feeling_general_1 == 0 ~ "neutral"))
 
-ggplot(feeling_general, aes(x = research_stage, y = feeling_general_1, fill = general_valence)) +
+general_plot <- ggplot(feeling_general, aes(x = research_stage, y = feeling_general_1, fill = general_valence)) +
   geom_jitter(aes(colour = general_valence)) +
   labs(
     title = "Intensity of general feeling throughout the research stages", 
@@ -232,18 +233,23 @@ ggplot(feeling_general, aes(x = research_stage, y = feeling_general_1, fill = ge
     fill = "General feeling", 
     colour = "General feeling"
   ) +
+  # theme_tufte() +
     theme(
       plot.title = element_text(),
       axis.text.x = element_text(size = 9, angle = 30, hjust = 1), 
       legend.title = element_text()
     )
+
+general_plot
 ```
 
 Across the different research stages, the overall emotional profile was predominantly positive. Although there were still a notable amount of negative and neutral answers, the general emotional profile was positive. The strongest positive emotional responses were reported during the Data Analysis, the Report Writing, and the Data Collection stages.
 
-# 2. Descriptives
+# Descriptives
 
 #### Questionnaire completion
+
+The following table summarizes questionnaire completion rates.
 
 ```{r}
 completion_table <- processed_data %>% 
@@ -254,10 +260,9 @@ completion_table <- processed_data %>%
 
 # completion_plot <- descriptive_plots(processed_data, "Status", "Questionnaire Completion")
 # completion_plot
-completion_table
+completion_table %>% 
+  flextable()
 ```
-
-This table summarizes questionnaire completion rates, with 1003 completions and 463
 
 #### Genders
 
@@ -267,7 +272,8 @@ gender_table <- processed_data %>%
   count(gender, name = "n") %>% 
   filter(!is.na(gender))
   
-gender_table
+gender_table %>% 
+  flextable()
 ```
 
 With regards to gender, female respondents comprised the largest proportion of respondents, followed by male participants. Participants identifying as non-binary or selecting "Prefer not to say" constituted a smaller proportion of the sample.
@@ -409,7 +415,7 @@ plot_europe
 
 Out of all 569 European participants, the researchers from the United Kingdom formed the largest group, followed by researchers from Spain, Italy, Poland and Germany.
 
-# 3. Research stage
+# Research stage
 
 ### Overall emotional landscape
 
@@ -483,7 +489,7 @@ chron_plot <- chron_long %>%
 chron_plot
 ```
 
-Throughout the research stages, it is clear that the valence of certain emotions was dominantly positive, especially regarding the post-project stage, the Data analysis, Data collection and Report writing stages. Negative emotions were more intensely reported in the Reality check, and the Preparations stages, however, the intensity of positive emotions was substantially higher. 
+Throughout the research stages, it is clear that the valence of certain emotions was dominantly positive, especially regarding the post-project stage, the Data analysis, Data collection and Report writing stages. Negative emotions were more intensely reported in the Reality check, and the Preparations stages, however, the intensity of positive emotions was substantially higher.
 
 ### Positive and negative emotions
 
@@ -523,16 +529,12 @@ stage_pos_plot <- scatterplot(stage_pos_long, palette_type = "Spectral") +
 mean_emotions_stage <- stage_neg_plot + stage_pos_plot
 mean_emotions_stage
 ```
-Again, these plots illustrate that the intensity positive emotions was consistently higher than that of negative emotions. However, among negative emotions, disappointment was reported with relatively high intensity. The intensity of fear gradually decreased throughout the stages, although a slight increase was observed in the Waiting stage. 
-With regards to positive emotions, interest emerged as the most intensely experienced emotion, followed by pride. A notable pattern is visible for relief, whose intensity increased steadily throughout the stages of research.  
+
+Again, these plots illustrate that the intensity positive emotions was consistently higher than that of negative emotions. However, among negative emotions, disappointment was reported with relatively high intensity. The intensity of fear gradually decreased throughout the stages, although a slight increase was observed in the Waiting stage. With regards to positive emotions, interest emerged as the most intensely experienced emotion, followed by pride. A notable pattern is visible for relief, whose intensity increased steadily throughout the stages of research.
 
 #### Post-project stage
 
-The Post-project stage was divided into 3 categories, depending on the outcome of the submission/future of the project:
-- Accepted and published,
-- Accepted but not yet published,
-- Rejected (rejected and postponed, rejected and abandoned, rejected and being revised).
-The three subgroups of the Rejected category was merged due to the small sample size (_N_ = 12), therefore the results should be interpreted carefully. 
+The Post-project stage was divided into 3 categories, depending on the outcome of the submission/future of the project: - Accepted and published, - Accepted but not yet published, - Rejected (rejected and postponed, rejected and abandoned, rejected and being revised). The three subgroups of the Rejected category was merged due to the small sample size (*N* = 12), therefore the results should be interpreted carefully.
 
 ##### Accepted and published
 
@@ -548,7 +550,8 @@ post_project1 <- post_project %>%
   filter(
     Q22 == "Accepted and published"
   ) %>% 
-  select(-Q22_6_TEXT) 
+  select(-Q22_6_TEXT) %>% 
+  filter(NAcount < 15)
 
 post_project1_long <- post_project1 %>% 
   longer_heatmap() %>% 
@@ -579,10 +582,9 @@ accepted_plots <- post_project1_plot + post_project2_plot
 accepted_plots
 ```
 
-most intense emotions if the article was accepted and published: interest, joy, pride, pleasure, relief, contentment (+ admiration, amusement)
-The intensity of hate, guilt, shame and contempt was the lowest. 
+In both cases, positive emotions were still reported more intensively than negative emotions; the intensity of interest and pride was the highest, whereas amusement, love, admiration and compassion were the least intensely experienced emotions. Interestingly, in the *"Accepted but not yet published"* category, the intensity of negative emotions was slightly lower, and the intensity of certain positive emotions (joy, contentment, relief) was slightly higher, compared to the *"Accepted and published"* category. Across both categories, shame, hate, guilt and contempt were among the least experienced negative emotions; conversely, in the *"Accepted but not yet published"* category, sadness and disappointment were reported with relatively low intensity.
 
-accepted but not yet published: small sample (n = 12, since participants that did not fill out the survey at all, were removed from the analysis). only 2 answers contained negative emotions, yet the intensity was definitely not high (rather moderate-low).
+However, it is important to mention that the sample size of the *"Accepted but not yet published"* category is particularly small: *N* = 12, whilst in the *"Accepted and published"* category, the sample size is *N* = 23. The small sample size in the former category represents the exclusion of participants who did not complete the questionnaire.
 
 ##### Rejected: rejected and abandoned, rejected and being revised, rejected and postponed
 
@@ -602,11 +604,11 @@ post_project3_plot <- post_project_plot(post_project3_long, "Rejected: mean inte
 post_project3_plot
 ```
 
-# Waiting stage, reality check stage
+In the *"Rejected"* category (including the *"Rejected and abandoned, Rejected and being revised, Rejected and postponed"* subcategories), negative emotions were relatively higher, compared to former visualizations. The most prominent negative emotions were disappointment, anger, sadness and regret. Furthermore, the interest remained to be reported with high intensity, followed by pride.
 
-negative emotions slightly more intense, specifically: fear?
+# Emotional Landscape Across Key Variables
 
-# By age: Where positive or negative emotions were more dominant
+### Age
 
 ```{r}
 ## Data preparation: 
@@ -637,23 +639,29 @@ age_proportional <- age_data %>%
     mutate(prop = mean_value/sum(mean_value))
 
 age_plot <- ggplot(age_proportional, aes(x = age_group, y = prop, fill = valence)) +
-    geom_col(width = 0.7) +
-    # geom_hline(yintercept = 0.5) +
-    scale_y_continuous(labels = percent, limits = c(0, 1)) +
-    scale_fill_manual(
-      values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
-      name = "Valence",
-      labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
+  geom_col(width = 0.7) +
+  # geom_hline(yintercept = 0.5) +
+  scale_y_continuous(labels = percent, limits = c(0, 1)) +
+  scale_fill_manual(
+    values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
+    name = "Valence",
+    labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
     ) +
-    theme_tufte() +
-    labs(y = "Proportion of total emotional intensity", 
-         x = "", 
-         title = "Proportion of total emotional intensity\nwithin the age groups") +
-    coord_flip()
+  theme_tufte() +
+  theme(
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  labs(
+    y = "Proportion of total emotional intensity",
+    x = "", 
+    title = "Proportion of total emotional intensity\nwithin the age groups") +
+  coord_flip()
 age_plot 
 ```
 
-# Area
+The plot represents the proportion of the emotional intensity of positive and negative emotions. Across all groups, positive emotional intensity accounted for the majority of the total emotional intensity, indicating that positive emotions were dominant, apart from participants aged 91-100, who seem to have reported negative emotions more intensely. However, it should be noted that this category only contained two respondents. Participants aged 71-90 exhibited the highest proportion of positive emotions. In the younger age groups, positive emotions represent roughly two-thirds or three-quarters of the total emotional intensity.
+
+### Area
 
 ```{r}
 area_data <- averages_data %>% 
@@ -690,7 +698,10 @@ area_plot <- ggplot(area_proportional, aes(x = area, y = prop, fill = valence)) 
       name = "Valence",
       labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
     ) +
-    theme_tufte() +
+  theme_tufte() +
+  theme(
+    plot.title = element_text(hjust = 0.5)
+  ) +
     labs(y = "Proportion of total emotional intensity", 
          x = "", 
          title = "Proportion of total emotional intensity\nwithin the areas of research") +
@@ -698,7 +709,9 @@ area_plot <- ggplot(area_proportional, aes(x = area, y = prop, fill = valence)) 
 area_plot
 ```
 
-# Category of work
+Among different areas of research, the pattern regarding the proportion of positive and negative emotions is consistent with the aforementioned results: positive emotional intensity represents the majority of the total emotional intensity. Nevertheless, it should be noted that compared to the other areas, researchers working in Physical sciences reported a slightly larger proportion of negative emotional intensity.
+
+### Category of work
 
 ```{r}
 work_data <- averages_data %>% 
@@ -736,6 +749,9 @@ work_plot <- ggplot(work_proportional, aes(x = category_of_work, y = prop, fill 
       labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
     ) +
     theme_tufte() +
+  theme(
+    plot.title = element_text(hjust = 0.5)
+  ) +
     labs(y = "Proportion of total emotional intensity", 
          x = "", 
          title = "Proportion of total emotional intensity\nwithin the categories of academic work") +
@@ -743,7 +759,9 @@ work_plot <- ggplot(work_proportional, aes(x = category_of_work, y = prop, fill 
 work_plot
 ```
 
-# Position
+Across all research settings, positive emotions consistently represented the majority of total emotional intensity. A minor difference can be observed in the case of Lab/online research, where the proportion of negative emotions seems to be slightly larger.
+
+### Position
 
 ```{r}
 position_data <- averages_data %>% 
@@ -782,6 +800,9 @@ position_plot <- ggplot(position_proportional, aes(x = position, y = prop, fill 
       labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
     ) +
     theme_tufte() +
+  theme(
+    plot.title = element_text(hjust = 0.5)
+  ) +
     labs(y = "Proportion of total emotional intensity", 
          x = "", 
          title = "Proportion of total emotional intensity\nacross positions") +
@@ -789,9 +810,9 @@ position_plot <- ggplot(position_proportional, aes(x = position, y = prop, fill 
 position_plot
 ```
 
-- ?? missing values at associate professor
+Consistent with the previous findings regarding the proportion of positive and negative emotions, positive emotional intensity dominated across all academic positions. Associate and full professors reported relatively higher proportions of positive emotions, whereas PhD students and researchers classified in the "Other" category showed a comparatively larger proportion of negative emotional intensity.
 
-# Countries
+### Countries
 
 ```{r include = FALSE, message=FALSE, warning=FALSE}
 country_emotions = processed_data %>%  
@@ -920,7 +941,8 @@ pos_counts <- positive_countries %>%
     n, country
   ) %>% 
   arrange(n)
-pos_counts
+pos_counts %>% 
+  flextable()
 ```
 
 #### Mean emotional intensity regarding positive emotions by countries
@@ -950,7 +972,8 @@ neg_counts <- negative_countries %>%
     n, country
   ) %>% 
   arrange(n)
-neg_counts
+neg_counts %>% 
+  flextable()
 ```
 
 Notably, respondents from Turkey also reported comparatively high levels of both positive and negative emotional intensity relative to respondents from other countries.

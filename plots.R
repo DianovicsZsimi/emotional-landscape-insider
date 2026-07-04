@@ -146,7 +146,7 @@ post_project_plot <- function(data, title) {
   data %>% 
   ggplot(aes(x = emotion,
              y = mean_intensity)) +
-    coord_cartesian(ylim = c(1,7)) +
+    coord_cartesian(ylim = c(0,7)) +
     scale_y_continuous(breaks = seq(0, 7, by = 2),
                        expand = c(0,0)) +
     geom_point(na.rm = T) +
