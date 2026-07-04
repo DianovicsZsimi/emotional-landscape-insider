@@ -189,7 +189,7 @@ min_values <- rep(0, ncol(pos_radar_df))
 pos_ready_df <- rbind(max_values, min_values, pos_radar_df)
 
 positive_radar <- ggplotify::as.ggplot(function() radarchart(pos_ready_df,
-          title = paste("Intensity of positive emotions")))
+          title = paste("Positive emotions")))
 
 ### negative emotions
 neg_radar <- emotion_means %>% 
@@ -200,7 +200,7 @@ neg_radar <- emotion_means %>%
   )
 neg_ready_df <- rbind(max_values, min_values, neg_radar)
 negative_radar <- ggplotify::as.ggplot(function() radarchart(neg_ready_df,
-          title = paste("Intensity of negative emotions")))
+          title = paste("Negative emotions")))
 
 ### both radars together: 
 overall_radars <- negative_radar + positive_radar
@@ -209,7 +209,7 @@ overall_radars
 
 As can be seen on the radar charts, positive emotions tended to be more intensely experienced than negative emotions. Interest was reported with the greatest intensity, followed by pride and contentment. Among negative emotions, fear and disappointment exhibited the highest mean intensity. However, their intensity remained lower than that of positive emotions.
 
-## General feeling
+## Intensity of general feeling throughout the research stages
 
 Regarding the intensity of the general feeling (represented on a scale of -3 to 3), the visualization includes the research stages.
 
@@ -227,7 +227,7 @@ feeling_general <- processed_data %>%
 general_plot <- ggplot(feeling_general, aes(x = research_stage, y = feeling_general_1, fill = general_valence)) +
   geom_jitter(aes(colour = general_valence)) +
   labs(
-    title = "Intensity of general feeling throughout the research stages", 
+    title = "", 
     x = "Research stage", 
     y = "General feeling", 
     fill = "General feeling", 
@@ -259,7 +259,6 @@ completion_table <- processed_data %>%
          "False" = "not completed"))
 
 # completion_plot <- descriptive_plots(processed_data, "Status", "Questionnaire Completion")
-# completion_plot
 completion_table %>% 
   flextable()
 ```
@@ -477,7 +476,7 @@ chron_plot <- chron_long %>%
     )
   ) +
   labs(title = "Emotional valence througout the research stages") +
-  theme_tufte() +
+  # theme_tufte() +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1)
     ) + 
@@ -536,8 +535,6 @@ Again, these plots illustrate that the intensity positive emotions was consisten
 
 The Post-project stage was divided into 3 categories, depending on the outcome of the submission/future of the project: - Accepted and published, - Accepted but not yet published, - Rejected (rejected and postponed, rejected and abandoned, rejected and being revised). The three subgroups of the Rejected category was merged due to the small sample size (*N* = 12), therefore the results should be interpreted carefully.
 
-##### Accepted and published
-
 ```{r}
 post_project <- processed_data %>% 
   filter(
@@ -586,8 +583,6 @@ In both cases, positive emotions were still reported more intensively than negat
 
 However, it is important to mention that the sample size of the *"Accepted but not yet published"* category is particularly small: *N* = 12, whilst in the *"Accepted and published"* category, the sample size is *N* = 23. The small sample size in the former category represents the exclusion of participants who did not complete the questionnaire.
 
-##### Rejected: rejected and abandoned, rejected and being revised, rejected and postponed
-
 ```{r}
 post_project3 <- post_project %>% 
   filter(
@@ -607,8 +602,6 @@ post_project3_plot
 In the *"Rejected"* category (including the *"Rejected and abandoned, Rejected and being revised, Rejected and postponed"* subcategories), negative emotions were relatively higher, compared to former visualizations. The most prominent negative emotions were disappointment, anger, sadness and regret. Furthermore, the interest remained to be reported with high intensity, followed by pride.
 
 # Emotional Landscape Across Key Variables
-
-### Age
 
 ```{r}
 ## Data preparation: 
@@ -647,7 +640,7 @@ age_plot <- ggplot(age_proportional, aes(x = age_group, y = prop, fill = valence
     name = "Valence",
     labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
     ) +
-  theme_tufte() +
+  # theme_tufte() +
   theme(
     plot.title = element_text(hjust = 0.5)
   ) +
@@ -660,8 +653,6 @@ age_plot
 ```
 
 The plot represents the proportion of the emotional intensity of positive and negative emotions. Across all groups, positive emotional intensity accounted for the majority of the total emotional intensity, indicating that positive emotions were dominant, apart from participants aged 91-100, who seem to have reported negative emotions more intensely. However, it should be noted that this category only contained two respondents. Participants aged 71-90 exhibited the highest proportion of positive emotions. In the younger age groups, positive emotions represent roughly two-thirds or three-quarters of the total emotional intensity.
-
-### Area
 
 ```{r}
 area_data <- averages_data %>% 
@@ -690,28 +681,26 @@ area_proportional <- area_data %>%
   mutate(prop = mean_value/sum(mean_value))
 
 area_plot <- ggplot(area_proportional, aes(x = area, y = prop, fill = valence)) +
-    geom_col(width = 0.7) +
-    # geom_hline(yintercept = 0.5) +
-    scale_y_continuous(labels = percent, limits = c(0, 1)) +
-    scale_fill_manual(
-      values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
-      name = "Valence",
-      labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
+  geom_col(width = 0.7) +
+  # geom_hline(yintercept = 0.5) +
+  scale_y_continuous(labels = percent, limits = c(0, 1)) +
+  scale_fill_manual(
+    values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
+    name = "Valence",
+    labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
     ) +
-  theme_tufte() +
+  # theme_tufte() +
   theme(
     plot.title = element_text(hjust = 0.5)
   ) +
-    labs(y = "Proportion of total emotional intensity", 
-         x = "", 
-         title = "Proportion of total emotional intensity\nwithin the areas of research") +
-    coord_flip()
+  labs(y = "Proportion of total emotional intensity", 
+       x = "", 
+       title = "Proportion of total emotional intensity\nwithin the areas of research") +
+  coord_flip()
 area_plot
 ```
 
 Among different areas of research, the pattern regarding the proportion of positive and negative emotions is consistent with the aforementioned results: positive emotional intensity represents the majority of the total emotional intensity. Nevertheless, it should be noted that compared to the other areas, researchers working in Physical sciences reported a slightly larger proportion of negative emotional intensity.
-
-### Category of work
 
 ```{r}
 work_data <- averages_data %>% 
@@ -740,28 +729,26 @@ work_proportional <- work_data %>%
   mutate(prop = mean_value/sum(mean_value))
 
 work_plot <- ggplot(work_proportional, aes(x = category_of_work, y = prop, fill = valence)) +
-    geom_col(width = 0.7) +
-    # geom_hline(yintercept = 0.5) +
-    scale_y_continuous(labels = percent, limits = c(0, 1)) +
-    scale_fill_manual(
-      values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
-      name = "Valence",
-      labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
+  geom_col(width = 0.7) +
+  # geom_hline(yintercept = 0.5) +
+  scale_y_continuous(labels = percent, limits = c(0, 1)) +
+  scale_fill_manual(
+    values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
+    name = "Valence",
+    labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
     ) +
-    theme_tufte() +
+  # theme_tufte() +
   theme(
     plot.title = element_text(hjust = 0.5)
   ) +
-    labs(y = "Proportion of total emotional intensity", 
-         x = "", 
-         title = "Proportion of total emotional intensity\nwithin the categories of academic work") +
-    coord_flip()
+  labs(y = "Proportion of total emotional intensity", 
+       x = "", 
+       title = "Proportion of total emotional intensity\nwithin the categories of academic work") +
+  coord_flip()
 work_plot
 ```
 
 Across all research settings, positive emotions consistently represented the majority of total emotional intensity. A minor difference can be observed in the case of Lab/online research, where the proportion of negative emotions seems to be slightly larger.
-
-### Position
 
 ```{r}
 position_data <- averages_data %>% 
@@ -791,22 +778,22 @@ position_proportional <- position_data %>%
   mutate(prop = mean_value/sum(mean_value))
 
 position_plot <- ggplot(position_proportional, aes(x = position, y = prop, fill = valence)) +
-    geom_col(width = 0.7) +
-    # geom_hline(yintercept = 0.5) +
-    scale_y_continuous(labels = percent, limits = c(0, 1)) +
-    scale_fill_manual(
-      values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
-      name = "Valence",
-      labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
-    ) +
-    theme_tufte() +
+  geom_col(width = 0.7) +
+  # geom_hline(yintercept = 0.5) +
+  scale_y_continuous(labels = percent, limits = c(0, 1)) +
+  scale_fill_manual(
+    values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
+    name = "Valence",
+    labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
+  ) +
+  # theme_tufte() +
   theme(
     plot.title = element_text(hjust = 0.5)
   ) +
-    labs(y = "Proportion of total emotional intensity", 
-         x = "", 
-         title = "Proportion of total emotional intensity\nacross positions") +
-    coord_flip()
+  labs(y = "Proportion of total emotional intensity", 
+       x = "", 
+       title = "Proportion of total emotional intensity\nacross positions") +
+  coord_flip()
 position_plot
 ```
 
@@ -914,8 +901,6 @@ negative_countries = country_emotions_clean %>%
 
 Altogether, 71 countries were recorded in the dataset, many of which were represented by only 1-2 respondents. Therefore the visualizations only include countries with at least 10 respondents.
 
-#### Mean emotional intensity regarding positive emotions by countries
-
 ```{r}
 countries_pos <- ggplot(positive_countries, aes(x = reorder(country, mean_emotion), y = mean_emotion, colour = country)) +
   geom_point(size = 3) + 
@@ -925,7 +910,7 @@ countries_pos <- ggplot(positive_countries, aes(x = reorder(country, mean_emotio
           plot.title = element_text(hjust = 0.5)) +
   scale_y_continuous(limits = c(1, 7)) +
   labs(
-      title = "Positive mean emotional intensity by countries (with at least 10 respondents)",
+      title = "Mean positive emotional intensity by countries (with at least 10 respondents)",
       x = "",
       y = ""
     )
@@ -945,8 +930,6 @@ pos_counts %>%
   flextable()
 ```
 
-#### Mean emotional intensity regarding positive emotions by countries
-
 ```{r}
 countries_neg <- ggplot(negative_countries, aes(x = reorder(country, mean_emotion), y = mean_emotion, colour = country)) +
   geom_point(size = 3) + 
@@ -956,7 +939,7 @@ countries_neg <- ggplot(negative_countries, aes(x = reorder(country, mean_emotio
           plot.title = element_text(hjust = 0.5)) +
   scale_y_continuous(limits = c(0, 7)) +
   labs(
-      title = "Negative mean emotional intensity by countries (with at least 10 respondents)",
+      title = "Mean negative emotional intensity by countries (with at least 10 respondents)",
       x = "",
       y = ""
     )
