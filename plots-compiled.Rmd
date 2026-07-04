@@ -6,7 +6,8 @@ output: html_document
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, 
+                      echo = FALSE)
 ```
 
 ```{r setup, echo = FALSE}
@@ -242,7 +243,7 @@ The strongest positive emotional responses were reported during the Data Analysi
 
 # 2. Descriptives
 
-#### questionnaire completion
+#### Questionnaire completion
 ```{r setup, echo = FALSE}
 completion_table <- processed_data %>% 
   select(Finished) %>% 
@@ -254,44 +255,50 @@ completion_table <- processed_data %>%
 # completion_plot
 completion_table
 ```
+This table summarizes questionnaire completion rates, with 1003 completions and 463 
 
 #### Genders
 
-```{r}
+```{r setup, echo = FALSE}
 gender_table <- processed_data %>% 
   select(gender) %>% 
-  count(gender, name = "n")
-
+  count(gender, name = "n") %>% 
+  filter(!is.na(gender))
+  
 gender_table
 ```
+With regards to gender, female respondents comprised the largest proportion of respondents, followed by male participants. Participants identifying as non-binary or selecting "Prefer not to say" constituted a smaller proportion of the sample. 
 
-## research area
+#### Research area
 
-```{r}
+```{r setup, echo = FALSE}
 area_descriptive = descriptive_plots(processed_data, "area", "Participants by Research Area")
 
 area_descriptive
 ```
+Health scientists represented the largest disciplinary groups, whereas physical scientists represented the smallest. 
 
-## position
+#### Position
 
-```{r}
+```{r setup, echo = FALSE}
 position_descriptive <- descriptive_plots(processed_data, "position", "Participants by Position")
 
 position_descriptive
 ```
+Professors comprised the most sizable position group in the sample (with full professors representing the most largest subgroup), while research assistants constituted the smallest position group. 
 
-## category of work
+#### Category of work
 
-```{r}
+```{r setup, echo = FALSE}
 work_descriptive <- descriptive_plots(processed_data, "category_of_work", "Participants by Category of Work")
 
 work_descriptive
 ```
+The vast majority of researchers conduct research in laboratory or in online settings, yet researchers in the clinical field constitute a notable subgroup. 
 
-## country distribution
+#### Country distribution
 
-```{r}
+```{r setup, echo = FALSE}
 df_country_map <- processed_data %>%
   mutate(country = ifelse(country == "" | is.na(country), NA, country)) %>%
   filter(!is.na(country)) %>%
@@ -362,10 +369,14 @@ descriptive_plotmap <- ggplot(world_data, aes(x = long, y = lat, group = group))
   )
 descriptive_plotmap
 ```
+Respondents from the United States of America comprised the largest group in the sample. Although Australia and Canadian were notably represented countries, however, their representation was substantially lower that that of the United States.   
 
-## Europe
+Researchers from European countries constituted a substantial proportion of respondents, however, as can be seen on the map, the labels are visually cluttered (probably due to the size of Europe in contrast to the size of the world).  
+In order to overcome the issue of the congested labels, a separate plot was created, which visualizes the numbers of respondents from European countries. 
 
-```{r}
+#### Europe
+
+```{r setup, echo = FALSE}
 plot_europe <- ggplot(world_data, aes(x = long, y = lat, group = group)) +
   geom_polygon(aes(fill = n), color = "white", linewidth = 0.1) +
   geom_label(
@@ -391,15 +402,9 @@ plot_europe <- ggplot(world_data, aes(x = long, y = lat, group = group)) +
 
 plot_europe
 ```
+With regards to Europe, participants from the United Kingdom 
+- Spain, Italy, Poland, Germany
 
-## data frame to rank countries
-
-```{r}
-df_country_ranked <- df_country_map %>%
-  arrange(desc(n))
-
-df_country_ranked
-```
 
 # 3. Research stage
 
