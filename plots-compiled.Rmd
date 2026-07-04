@@ -10,7 +10,7 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE,
                       echo = FALSE)
 ```
 
-```{r setup, echo = FALSE}
+```{r}
 # Updated library loading with checks for installation
 
 if (!require("tidyverse")) install.packages("tidyverse")
@@ -55,7 +55,7 @@ library(viridis)
 library(ggrepel)
 ```
 
-```{r setup, echo = FALSE}
+```{r}
 source("plots.R")
 data <- read.csv("data/full_data.csv", na.strings = c("", "NA", "NaN"))
 
@@ -89,7 +89,7 @@ position_order = c("Other",
                    "Research assistant")
 ```
 
-```{r setup, echo = FALSE}
+```{r}
 processed_data = raw_data %>% 
   rename(interest = feeling_stage_1,
          amusement = feeling_stage_2,
@@ -154,11 +154,11 @@ means_data <- processed_data %>%
 
 # 1. Overall pattern
 
-The overall pattern represents that researchers reported both positive and negative emotional intensity in relation to their work. 
+The overall pattern represents that researchers reported both positive and negative emotional intensity in relation to their work.
 
-## Overall intensity of positive and negative emotions 
+## Overall intensity of positive and negative emotions
 
-```{r setup, echo = FALSE}
+```{r}
 ## Radar chart - not yet sure if this is informative enough
 ### data preparation
 emotion_means <- means_data %>% 
@@ -205,14 +205,14 @@ negative_radar <- ggplotify::as.ggplot(function() radarchart(neg_ready_df,
 overall_radars <- negative_radar + positive_radar
 overall_radars
 ```
-As can be seen on the radar charts, positive emotions tended to be more intensely experienced than negative emotions. Interest was reported with the greatest intensity, followed by pride and contentment. 
-Among negative emotions, fear and disappointment exhibited the highest mean intensity. However, their intensity remained lower than that of positive emotions.  
+
+As can be seen on the radar charts, positive emotions tended to be more intensely experienced than negative emotions. Interest was reported with the greatest intensity, followed by pride and contentment. Among negative emotions, fear and disappointment exhibited the highest mean intensity. However, their intensity remained lower than that of positive emotions.
 
 ## 1.2. General feeling
 
-Regarding the intensity of the general feeling (represented on a scale of -3 to 3), the visualization includes the research stages. 
+Regarding the intensity of the general feeling (represented on a scale of -3 to 3), the visualization includes the research stages.
 
-```{r setup, echo = FALSE}
+```{r}
 feeling_general <- processed_data %>% 
   select(feeling_general_1, research_stage) %>% 
   arrange(research_stage) %>% 
@@ -238,13 +238,14 @@ ggplot(feeling_general, aes(x = research_stage, y = feeling_general_1, fill = ge
       legend.title = element_text()
     )
 ```
-Across the different research stages, the overall emotional profile was predominantly positive. Although there were still a notable amount of negative and neutral answers, the general emotional profile was positive. 
-The strongest positive emotional responses were reported during the Data Analysis, the Report Writing, and the Data Collection stages. 
+
+Across the different research stages, the overall emotional profile was predominantly positive. Although there were still a notable amount of negative and neutral answers, the general emotional profile was positive. The strongest positive emotional responses were reported during the Data Analysis, the Report Writing, and the Data Collection stages.
 
 # 2. Descriptives
 
 #### Questionnaire completion
-```{r setup, echo = FALSE}
+
+```{r}
 completion_table <- processed_data %>% 
   select(Finished) %>% 
   count(Finished, name = "count") %>% 
@@ -255,11 +256,12 @@ completion_table <- processed_data %>%
 # completion_plot
 completion_table
 ```
-This table summarizes questionnaire completion rates, with 1003 completions and 463 
+
+This table summarizes questionnaire completion rates, with 1003 completions and 463
 
 #### Genders
 
-```{r setup, echo = FALSE}
+```{r}
 gender_table <- processed_data %>% 
   select(gender) %>% 
   count(gender, name = "n") %>% 
@@ -267,38 +269,42 @@ gender_table <- processed_data %>%
   
 gender_table
 ```
-With regards to gender, female respondents comprised the largest proportion of respondents, followed by male participants. Participants identifying as non-binary or selecting "Prefer not to say" constituted a smaller proportion of the sample. 
+
+With regards to gender, female respondents comprised the largest proportion of respondents, followed by male participants. Participants identifying as non-binary or selecting "Prefer not to say" constituted a smaller proportion of the sample.
 
 #### Research area
 
-```{r setup, echo = FALSE}
+```{r}
 area_descriptive = descriptive_plots(processed_data, "area", "Participants by Research Area")
 
 area_descriptive
 ```
-Health scientists represented the largest disciplinary groups, whereas physical scientists represented the smallest. 
+
+Health scientists represented the largest disciplinary groups, whereas physical scientists represented the smallest.
 
 #### Position
 
-```{r setup, echo = FALSE}
+```{r}
 position_descriptive <- descriptive_plots(processed_data, "position", "Participants by Position")
 
 position_descriptive
 ```
-Professors comprised the most sizable position group in the sample (with full professors representing the most largest subgroup), while research assistants constituted the smallest position group. 
+
+Professors comprised the most sizable position group in the sample (with full professors representing the most largest subgroup), while research assistants constituted the smallest position group.
 
 #### Category of work
 
-```{r setup, echo = FALSE}
+```{r}
 work_descriptive <- descriptive_plots(processed_data, "category_of_work", "Participants by Category of Work")
 
 work_descriptive
 ```
-The vast majority of researchers conduct research in laboratory or in online settings, yet researchers in the clinical field constitute a notable subgroup. 
+
+The vast majority of researchers conduct research in laboratory or in online settings, yet researchers in the clinical field constitute a notable subgroup.
 
 #### Country distribution
 
-```{r setup, echo = FALSE}
+```{r}
 df_country_map <- processed_data %>%
   mutate(country = ifelse(country == "" | is.na(country), NA, country)) %>%
   filter(!is.na(country)) %>%
@@ -312,8 +318,6 @@ df_country_map <- processed_data %>%
 
 world_map <- map_data("world") %>%
   mutate(region = tolower(region))
-
-world_map
 
 world_data <- left_join(world_map, df_country_map, by = c("region" = "country"))
 
@@ -369,18 +373,18 @@ descriptive_plotmap <- ggplot(world_data, aes(x = long, y = lat, group = group))
   )
 descriptive_plotmap
 ```
-Respondents from the United States of America comprised the largest group in the sample. Although Australia and Canadian were notably represented countries, however, their representation was substantially lower that that of the United States.   
 
-Researchers from European countries constituted a substantial proportion of respondents, however, as can be seen on the map, the labels are visually cluttered (probably due to the size of Europe in contrast to the size of the world).  
-In order to overcome the issue of the congested labels, a separate plot was created, which visualizes the numbers of respondents from European countries. 
+Respondents from the United States of America comprised the largest group in the sample. Although Australia and Canadian were notably represented countries, however, their representation was substantially lower that that of the United States.
 
-#### Europe
+Researchers from European countries constituted a substantial proportion of respondents, however, as can be seen on the map, the labels are visually cluttered (probably due to the size of Europe in contrast to the size of the world).\
+In order to overcome the issue of the congested labels, a separate plot was created, which visualizes the numbers of respondents from European countries.
 
-```{r setup, echo = FALSE}
+```{r}
 plot_europe <- ggplot(world_data, aes(x = long, y = lat, group = group)) +
   geom_polygon(aes(fill = n), color = "white", linewidth = 0.1) +
   geom_label(
-    data = country_centroids %>% filter(long >= -25, long <= 45, lat >= 35, lat <= 72),
+    data = country_centroids %>% 
+      filter(long >= -25, long <= 45, lat >= 35, lat <= 72),
     aes(x = long, y = lat, label = n),
     inherit.aes = FALSE,
     size = 2.5,
@@ -402,13 +406,12 @@ plot_europe <- ggplot(world_data, aes(x = long, y = lat, group = group)) +
 
 plot_europe
 ```
-With regards to Europe, participants from the United Kingdom 
-- Spain, Italy, Poland, Germany
 
+Out of all 569 European participants, the researchers from the United Kingdom formed the largest group, followed by researchers from Spain, Italy, Poland and Germany.
 
 # 3. Research stage
 
-- overall erzelmek a stagekben: line chart (?) -\> informative for research stage comparison
+### Overall emotional landscape
 
 ```{r}
 by_research_stage <- sd_data(processed_data) %>% 
@@ -461,20 +464,29 @@ chron_plot <- chron_long %>%
     values = c(
       mean_emotion_pos = "red",
       mean_emotion_neg = "blue"
+    ), 
+    labels = c(
+      mean_emotion_pos = "Positive", 
+      mean_emotion_neg = "Negative"
     )
   ) +
-  labs(title = "Positive vs Negative Emotions") +
+  labs(title = "Emotional valence througout the research stages") +
   theme_tufte() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))+ 
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+    ) + 
   scale_y_continuous(
-  limits = c(1, 7),
-  breaks = 1:7
-)
+    limits = c(1, 7),
+    breaks = 1:7
+  )
 
 chron_plot
 ```
 
-## positive and negative emotions separately - dotplot
+Throughout the research stages, it is clear that the valence of certain emotions was dominantly positive, especially regarding the post-project stage, the Data analysis, Data collection and Report writing stages. Negative emotions were more intensely reported in the Reality check, and the Preparations stages, however, the intensity of positive emotions was substantially higher. 
+
+### Positive and negative emotions
+
 ```{r}
 research_stage_emotions_negative <- research_stage_emotions_negative %>% 
   mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
@@ -485,19 +497,45 @@ research_stage_emotions_positive <- research_stage_emotions_positive %>%
   filter(!is.na(research_stage))
 
 stage_neg_long <- scatter_long(research_stage_emotions_negative)
-stage_neg_plot <- scatterplot(stage_neg_long, palette_type = "Paired")
-stage_neg_plot
+stage_neg_plot <- scatterplot(stage_neg_long, palette_type = "Paired") +
+  labs(
+      title = "Negative emotions",
+      x = "Emotion",
+      y = "Mean Score",
+      color = "Research Stage"
+    )
+# stage_neg_plot
+```
 
+```{r}
 stage_pos_long <- scatter_long(research_stage_emotions_positive)
-stage_pos_plot <- scatterplot(stage_pos_long, palette_type = "Spectral")
-stage_pos_plot
+stage_pos_plot <- scatterplot(stage_pos_long, palette_type = "Spectral") +
+  labs(
+      title = "Positive emotions",
+      x = "Emotion",
+      y = "Mean Score",
+      color = "Research Stage"
+    )
+# stage_pos_plot
+```
 
-## Overall plot
+```{r}
 mean_emotions_stage <- stage_neg_plot + stage_pos_plot
 mean_emotions_stage
 ```
+Again, these plots illustrate that the intensity positive emotions was consistently higher than that of negative emotions. However, among negative emotions, disappointment was reported with relatively high intensity. The intensity of fear gradually decreased throughout the stages, although a slight increase was observed in the Waiting stage. 
+With regards to positive emotions, interest emerged as the most intensely experienced emotion, followed by pride. A notable pattern is visible for relief, whose intensity increased steadily throughout the stages of research.  
 
-## Post-Project stage
+#### Post-project stage
+
+The Post-project stage was divided into 3 categories, depending on the outcome of the submission/future of the project:
+- Accepted and published,
+- Accepted but not yet published,
+- Rejected (rejected and postponed, rejected and abandoned, rejected and being revised).
+The three subgroups of the Rejected category was merged due to the small sample size (_N_ = 12), therefore the results should be interpreted carefully. 
+
+##### Accepted and published
+
 ```{r}
 post_project <- processed_data %>% 
   filter(
@@ -516,13 +554,10 @@ post_project1_long <- post_project1 %>%
   longer_heatmap() %>% 
   sum_analysis()
 
-post_project1_plot <- post_project_plot(post_project1_long, "Accepted and Published: mean intensity of all emotions")
+post_project1_plot <- post_project_plot(post_project1_long, "Accepted and Published")
   
-post_project1_plot
 ```
-most intense emotions if the article was accepted and published: interest, joy, pride, pleasure, relief, contentment (+ admiration, amusement)
 
-### Accepted but not yet published
 ```{r}
 post_project2 <- post_project %>% 
   filter(
@@ -535,20 +570,31 @@ post_project2_long <- post_project2 %>%
   longer_heatmap() %>% 
   sum_analysis()
 
-post_project2_plot <- post_project_plot(post_project2_long, "Accepted but not yet published: mean intensity of all emotions")
-post_project2_plot
+post_project2_plot <- post_project_plot(post_project2_long, "Accepted but not yet published")
+# post_project2_plot
 ```
-missing negative values - most likely due to the small sample (n = 12). only 2 answers contained negative emotions, yet the intensity was definitely not high (rather moderate-low). 
 
-### 4.3. Rejected (rejected and abandoned, rejected and being revised, rejected and postponed)
+```{r}
+accepted_plots <- post_project1_plot + post_project2_plot
+accepted_plots
+```
+
+most intense emotions if the article was accepted and published: interest, joy, pride, pleasure, relief, contentment (+ admiration, amusement)
+The intensity of hate, guilt, shame and contempt was the lowest. 
+
+accepted but not yet published: small sample (n = 12, since participants that did not fill out the survey at all, were removed from the analysis). only 2 answers contained negative emotions, yet the intensity was definitely not high (rather moderate-low).
+
+##### Rejected: rejected and abandoned, rejected and being revised, rejected and postponed
+
 ```{r}
 post_project3 <- post_project %>% 
   filter(
     Q22 %in% c("Rejected and abandoned", "Rejected and being revised", "Rejected and postponed")
   ) %>% 
-  select(-Q22_6_TEXT)
+  select(-Q22_6_TEXT) %>%
+  filter(!is.na(feeling_general_1))
 
-post_project3_long <- post_project3 %>% 
+post_project3_long <- post_project3 %>%
   longer_heatmap() %>%
   sum_analysis()
 
@@ -557,9 +603,11 @@ post_project3_plot
 ```
 
 # Waiting stage, reality check stage
-negative emotions slightly more intense, specifically: fear? 
 
-# By age: Where positive or negative emotions were more dominant 
+negative emotions slightly more intense, specifically: fear?
+
+# By age: Where positive or negative emotions were more dominant
+
 ```{r}
 ## Data preparation: 
 averages_data <- processed_data %>% 
@@ -606,6 +654,7 @@ age_plot
 ```
 
 # Area
+
 ```{r}
 area_data <- averages_data %>% 
   select(
@@ -649,7 +698,8 @@ area_plot <- ggplot(area_proportional, aes(x = area, y = prop, fill = valence)) 
 area_plot
 ```
 
-# Category of work 
+# Category of work
+
 ```{r}
 work_data <- averages_data %>% 
   select(
@@ -694,6 +744,7 @@ work_plot
 ```
 
 # Position
+
 ```{r}
 position_data <- averages_data %>% 
   select(
@@ -737,9 +788,11 @@ position_plot <- ggplot(position_proportional, aes(x = position, y = prop, fill 
     coord_flip()
 position_plot
 ```
-- ?? missing values at associate professor 
 
-# Countries 
+- ?? missing values at associate professor
+
+# Countries
+
 ```{r include = FALSE, message=FALSE, warning=FALSE}
 country_emotions = processed_data %>%  
   select(ResponseId, country, country_other, all_of(feelings)) %>% 
@@ -838,9 +891,9 @@ negative_countries = country_emotions_clean %>%
   mutate(country_iso = countrycode::countrycode(sourcevar = country, origin = "country.name", destination = "iso3c"))
 ```
 
-Altogether, 71 countries were recorded in the dataset, many of which were represented by only 1-2 respondents. Therefore the visualizations only include countries with at least 10 respondents. 
+Altogether, 71 countries were recorded in the dataset, many of which were represented by only 1-2 respondents. Therefore the visualizations only include countries with at least 10 respondents.
 
-#### Mean emotional intensity regarding positive emotions by countries 
+#### Mean emotional intensity regarding positive emotions by countries
 
 ```{r}
 countries_pos <- ggplot(positive_countries, aes(x = reorder(country, mean_emotion), y = mean_emotion, colour = country)) +
@@ -858,8 +911,9 @@ countries_pos <- ggplot(positive_countries, aes(x = reorder(country, mean_emotio
 
 countries_pos
 ```
-Indian, Spanish, Brazilian and Turkish respondents indicated the highest values regarding positive emotions (mean emotional intensity was above 4). 
-The following table summarises the numbers of respondents (in ascending order) from each country represented on the plot. 
+
+Indian, Spanish, Brazilian and Turkish respondents indicated the highest values regarding positive emotions (mean emotional intensity was above 4). The following table summarises the numbers of respondents (in ascending order) from each country represented on the plot.
+
 ```{r}
 pos_counts <- positive_countries %>% 
   select(
@@ -869,7 +923,7 @@ pos_counts <- positive_countries %>%
 pos_counts
 ```
 
-#### Mean emotional intensity regarding positive emotions by countries 
+#### Mean emotional intensity regarding positive emotions by countries
 
 ```{r}
 countries_neg <- ggplot(negative_countries, aes(x = reorder(country, mean_emotion), y = mean_emotion, colour = country)) +
@@ -887,8 +941,9 @@ countries_neg <- ggplot(negative_countries, aes(x = reorder(country, mean_emotio
 
 countries_neg
 ```
-The differences in mean values regarding negative emotions is not substantial: Belgian respondents' mean emotional intensity was 0.8833, and mean emotional intensity regarding Turkey was 2.2283. 
-The numbers of respondents are summarised in the following table: 
+
+The differences in mean values regarding negative emotions is not substantial: Belgian respondents' mean emotional intensity was 0.8833, and mean emotional intensity regarding Turkey was 2.2283. The numbers of respondents are summarized in the following table:
+
 ```{r}
 neg_counts <- negative_countries %>% 
   select(

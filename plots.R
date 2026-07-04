@@ -110,12 +110,6 @@ scatter_long <- function(data) {
 scatterplot <- function(data, palette_type) {
   ggplot(data, aes(x = research_stage, y = mean_score, colour = emotion)) +
     geom_point(size = 3) +
-    labs(
-      title = "Mean Emotion Scores by Research Stage",
-      x = "Emotion",
-      y = "Mean Score",
-      color = "Research Stage"
-    ) +
     theme_minimal(base_size = 10) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1), 
           legend.key.size = unit(0.4, "cm"),
