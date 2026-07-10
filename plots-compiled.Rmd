@@ -5,7 +5,7 @@ output: html_document
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(warning = FALSE, message = FALSE, 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE,
                       echo = FALSE)
 ```
 
@@ -203,7 +203,7 @@ negative_radar <- ggplotify::as.ggplot(function() radarchart(neg_ready_df,
           title = paste("Negative emotions")))
 
 ### both radars together: 
-overall_radars <- negative_radar + positive_radar
+overall_radars <- negative_radar + positive_radar + plot_layout(widths = c(1, 1))
 overall_radars
 ```
 
@@ -211,210 +211,34 @@ As can be seen on the radar charts, positive emotions tended to be more intensel
 
 ## Intensity of general feeling throughout the research stages
 
-Regarding the intensity of the general feeling (represented on a scale of -3 to 3), the visualization includes the research stages.
+Regarding the intensity of the general feeling (represented on a scale of -3 to 3), the visualization includes a distribution of the reported general feeling scores.
 
 ```{r}
 feeling_general <- processed_data %>% 
-  select(feeling_general_1, research_stage) %>% 
-  arrange(research_stage) %>% 
-  filter(!is.na(research_stage), 
-         !is.na(feeling_general_1)) %>% 
-  mutate(general_valence = case_when(
-    feeling_general_1 > 0 ~ "positive",
-    feeling_general_1 < 0 ~ "negative", 
-    feeling_general_1 == 0 ~ "neutral"))
+  select(feeling_general_1) %>% 
+  filter(!is.na(feeling_general_1)) %>% 
+  mutate(feeling_general_1 = as.double(feeling_general_1)) %>% 
+  count(feeling_general_1)
 
-general_plot <- ggplot(feeling_general, aes(x = research_stage, y = feeling_general_1, fill = general_valence)) +
-  geom_jitter(aes(colour = general_valence)) +
-  labs(
-    title = "", 
-    x = "Research stage", 
-    y = "General feeling", 
-    fill = "General feeling", 
-    colour = "General feeling"
+general_distribution1 <- ggplot(feeling_general, aes(x = feeling_general_1, y = n)) +
+  geom_point(width = 0.25) +
+  scale_x_continuous(
+    breaks = -3:3,
+    labels = -3:3
   ) +
-  # theme_tufte() +
-    theme(
-      plot.title = element_text(),
-      axis.text.x = element_text(size = 9, angle = 30, hjust = 1), 
-      legend.title = element_text()
-    )
-
-general_plot
-```
-
-Across the different research stages, the overall emotional profile was predominantly positive. Although there were still a notable amount of negative and neutral answers, the general emotional profile was positive. The strongest positive emotional responses were reported during the Data Analysis, the Report Writing, and the Data Collection stages.
-
-# Descriptives
-
-#### Questionnaire completion
-
-The following table summarizes questionnaire completion rates.
-
-```{r}
-completion_table <- processed_data %>% 
-  select(Finished) %>% 
-  count(Finished, name = "count") %>% 
-  mutate(Finished = recode(Finished, "True" = "completed", 
-         "False" = "not completed"))
-
-# completion_plot <- descriptive_plots(processed_data, "Status", "Questionnaire Completion")
-completion_table %>% 
-  flextable()
-```
-
-#### Genders
-
-```{r}
-gender_table <- processed_data %>% 
-  select(gender) %>% 
-  count(gender, name = "n") %>% 
-  filter(!is.na(gender))
-  
-gender_table %>% 
-  flextable()
-```
-
-With regards to gender, female respondents comprised the largest proportion of respondents, followed by male participants. Participants identifying as non-binary or selecting "Prefer not to say" constituted a smaller proportion of the sample.
-
-#### Research area
-
-```{r}
-area_descriptive = descriptive_plots(processed_data, "area", "Participants by Research Area")
-
-area_descriptive
-```
-
-Health scientists represented the largest disciplinary groups, whereas physical scientists represented the smallest.
-
-#### Position
-
-```{r}
-position_descriptive <- descriptive_plots(processed_data, "position", "Participants by Position")
-
-position_descriptive
-```
-
-Professors comprised the most sizable position group in the sample (with full professors representing the most largest subgroup), while research assistants constituted the smallest position group.
-
-#### Category of work
-
-```{r}
-work_descriptive <- descriptive_plots(processed_data, "category_of_work", "Participants by Category of Work")
-
-work_descriptive
-```
-
-The vast majority of researchers conduct research in laboratory or in online settings, yet researchers in the clinical field constitute a notable subgroup.
-
-#### Country distribution
-
-```{r}
-df_country_map <- processed_data %>%
-  mutate(country = ifelse(country == "" | is.na(country), NA, country)) %>%
-  filter(!is.na(country)) %>%
-  count(country) %>%
-  mutate(country = tolower(country),
-         country = dplyr::case_when(
-           country == "united states of america" ~ "usa",
-           country == "united kingdom of great britain and northern ireland" ~ "uk",
-           TRUE ~ country
-         ))
-
-world_map <- map_data("world") %>%
-  mutate(region = tolower(region))
-
-world_data <- left_join(world_map, df_country_map, by = c("region" = "country"))
-
-country_centroids <- world_data %>%
-  filter(!is.na(n)) %>%
-  group_by(region, n) %>%
-  summarise(
-    long = mean(long, na.rm = TRUE),
-    lat  = mean(lat,  na.rm = TRUE),
-    .groups = "drop"
-  )
-
-
-descriptive_plotmap <- ggplot(world_data, aes(x = long, y = lat, group = group)) +
-  geom_polygon(aes(fill = n), 
-               color = "white", 
-               linewidth = 0.1
-               ) +
-  # ggrepel::geom_label_repel(
-  #   data = country_centroids,
-  #   aes(x = long, y = lat, label = n),
-  #   inherit.aes = FALSE, 
-  #   size = 3, 
-  #   max.overlaps = 20
-  #   ) +
-  geom_label(
-    data = country_centroids,
-    aes(x = long, y = lat, label = n),
-    inherit.aes = FALSE,
-    size = 2.5,
-    color = "black",
-    fontface = "bold",
-    fill = "white",        
-    alpha = 0.6,           
-    label.size = 0.1,      
-    check_overlap = TRUE
-  ) +
-  scale_fill_gradient(
-    low  = "#deebf7",
-    high = "#08519c",
-    na.value = "grey95"
+  theme(
+    axis.title.y = element_blank()
   ) +
   labs(
-    title = "Participants by Country",
-    fill  = "Participants"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    plot.title    = element_text(face = "bold"),
-    axis.text.x   = element_blank(),
-    axis.title    = element_blank(),
-    panel.grid    = element_blank()
-  )
-descriptive_plotmap
+    x = "General feeling scores",
+    y = "", 
+    title = "")
+
+general_distribution1 + theme_bw()
 ```
+The distribution was shifted toward the positive end of the scale. The most frequent response (the mode) was 2, while the strongest positive response (3) was less frequent. Negative scores were relatively infrequent. 
 
-Respondents from the United States of America comprised the largest group in the sample. Although Australia and Canadian were notably represented countries, however, their representation was substantially lower that that of the United States.
-
-Researchers from European countries constituted a substantial proportion of respondents, however, as can be seen on the map, the labels are visually cluttered (probably due to the size of Europe in contrast to the size of the world).\
-In order to overcome the issue of the congested labels, a separate plot was created, which visualizes the numbers of respondents from European countries.
-
-```{r}
-plot_europe <- ggplot(world_data, aes(x = long, y = lat, group = group)) +
-  geom_polygon(aes(fill = n), color = "white", linewidth = 0.1) +
-  geom_label(
-    data = country_centroids %>% 
-      filter(long >= -25, long <= 45, lat >= 35, lat <= 72),
-    aes(x = long, y = lat, label = n),
-    inherit.aes = FALSE,
-    size = 2.5,
-    fill = "white",
-    alpha = 0.7,
-    label.size = 0.1
-  ) +
-  scale_fill_gradient(low = "#deebf7", high = "#08519c", na.value = "grey95") +
-  coord_fixed(xlim = c(-25, 45), ylim = c(35, 72), ratio = 1.3) +
-  labs(title = "Europe") +
-  theme_minimal(base_size = 11) +
-  theme(
-    plot.title  = element_text(face = "bold"),
-    axis.text   = element_blank(),
-    axis.title  = element_blank(),
-    panel.grid  = element_blank(),
-    legend.position = "none"
-  )
-
-plot_europe
-```
-
-Out of all 569 European participants, the researchers from the United Kingdom formed the largest group, followed by researchers from Spain, Italy, Poland and Germany.
-
-# Research stage
+# Overall emotional landscape by research stage
 
 ### Overall emotional landscape
 
@@ -475,17 +299,24 @@ chron_plot <- chron_long %>%
       mean_emotion_neg = "Negative"
     )
   ) +
-  labs(title = "Emotional valence througout the research stages") +
+  labs(
+    title = "Emotional valence througout the research stages",
+    x = "", 
+    y = "Mean emotional intensity", 
+    color = "Emotional valence") +
   # theme_tufte() +
+  theme_bw() +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1)
+    axis.text.x = element_text(angle = 45, hjust = 1), 
+    axis.title.x = element_blank(), 
+    axis.title.y = element_text(size = 8)
     ) + 
   scale_y_continuous(
     limits = c(1, 7),
     breaks = 1:7
   )
 
-chron_plot
+chron_plot 
 ```
 
 Throughout the research stages, it is clear that the valence of certain emotions was dominantly positive, especially regarding the post-project stage, the Data analysis, Data collection and Report writing stages. Negative emotions were more intensely reported in the Reality check, and the Preparations stages, however, the intensity of positive emotions was substantially higher.
@@ -505,11 +336,11 @@ stage_neg_long <- scatter_long(research_stage_emotions_negative)
 stage_neg_plot <- scatterplot(stage_neg_long, palette_type = "Paired") +
   labs(
       title = "Negative emotions",
-      x = "Emotion",
+      x = "",
       y = "Mean Score",
-      color = "Research Stage"
+      color = "Emotion"
     )
-# stage_neg_plot
+stage_neg_plot
 ```
 
 ```{r}
@@ -517,19 +348,19 @@ stage_pos_long <- scatter_long(research_stage_emotions_positive)
 stage_pos_plot <- scatterplot(stage_pos_long, palette_type = "Spectral") +
   labs(
       title = "Positive emotions",
-      x = "Emotion",
+      x = "",
       y = "Mean Score",
-      color = "Research Stage"
+      color = "Emotion"
     )
 # stage_pos_plot
 ```
 
 ```{r}
-mean_emotions_stage <- stage_neg_plot + stage_pos_plot
+mean_emotions_stage <- stage_neg_plot + stage_pos_plot + plot_layout(widths = c(1, 1))
 mean_emotions_stage
 ```
 
-Again, these plots illustrate that the intensity positive emotions was consistently higher than that of negative emotions. However, among negative emotions, disappointment was reported with relatively high intensity. The intensity of fear gradually decreased throughout the stages, although a slight increase was observed in the Waiting stage. With regards to positive emotions, interest emerged as the most intensely experienced emotion, followed by pride. A notable pattern is visible for relief, whose intensity increased steadily throughout the stages of research.
+Again, the plots illustrate that the intensity positive emotions was consistently higher than that of negative emotions. However, among negative emotions, disappointment was reported with relatively high intensity. The intensity of fear gradually decreased throughout the stages, although a slight increase was observed in the Waiting stage. With regards to positive emotions, interest emerged as the most intensely experienced emotion, followed by pride. A notable pattern is visible for relief, whose intensity increased steadily throughout the stages of research.
 
 #### Post-project stage
 
@@ -554,7 +385,7 @@ post_project1_long <- post_project1 %>%
   longer_heatmap() %>% 
   sum_analysis()
 
-post_project1_plot <- post_project_plot(post_project1_long, "Accepted and Published")
+post_project1_plot <- post_project_plot(post_project1_long, "Accepted and Published") 
   
 ```
 
@@ -575,7 +406,7 @@ post_project2_plot <- post_project_plot(post_project2_long, "Accepted but not ye
 ```
 
 ```{r}
-accepted_plots <- post_project1_plot + post_project2_plot
+accepted_plots <- post_project1_plot + post_project2_plot + plot_layout(widths = c(1, 1))
 accepted_plots
 ```
 
@@ -596,7 +427,10 @@ post_project3_long <- post_project3 %>%
   sum_analysis()
 
 post_project3_plot <- post_project_plot(post_project3_long, "Rejected: mean intensity of all emotions")
-post_project3_plot
+```
+
+```{r}
+post_project3_plot + plot_layout(widths = c(1, 1))
 ```
 
 In the *"Rejected"* category (including the *"Rejected and abandoned, Rejected and being revised, Rejected and postponed"* subcategories), negative emotions were relatively higher, compared to former visualizations. The most prominent negative emotions were disappointment, anger, sadness and regret. Furthermore, the interest remained to be reported with high intensity, followed by pride.
@@ -641,6 +475,7 @@ age_plot <- ggplot(age_proportional, aes(x = age_group, y = prop, fill = valence
     labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
     ) +
   # theme_tufte() +
+  theme_light() +
   theme(
     plot.title = element_text(hjust = 0.5)
   ) +
@@ -652,7 +487,7 @@ age_plot <- ggplot(age_proportional, aes(x = age_group, y = prop, fill = valence
 age_plot 
 ```
 
-The plot represents the proportion of the emotional intensity of positive and negative emotions. Across all groups, positive emotional intensity accounted for the majority of the total emotional intensity, indicating that positive emotions were dominant, apart from participants aged 91-100, who seem to have reported negative emotions more intensely. However, it should be noted that this category only contained two respondents. Participants aged 71-90 exhibited the highest proportion of positive emotions. In the younger age groups, positive emotions represent roughly two-thirds or three-quarters of the total emotional intensity.
+The plot represents the proportion of the emotional intensity of positive and negative emotions. Across all groups, positive emotional intensity accounted for the majority of the total emotional intensity, indicating that positive emotions were dominant. Participants aged 71-90 exhibited the highest proportion of positive emotions. In the younger age groups, positive emotions represent roughly two-thirds or three-quarters of the total emotional intensity.
 
 ```{r}
 area_data <- averages_data %>% 
@@ -690,6 +525,7 @@ area_plot <- ggplot(area_proportional, aes(x = area, y = prop, fill = valence)) 
     labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
     ) +
   # theme_tufte() +
+  theme_light() +
   theme(
     plot.title = element_text(hjust = 0.5)
   ) +
@@ -738,6 +574,7 @@ work_plot <- ggplot(work_proportional, aes(x = category_of_work, y = prop, fill 
     labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
     ) +
   # theme_tufte() +
+  theme_light() +
   theme(
     plot.title = element_text(hjust = 0.5)
   ) +
@@ -787,6 +624,7 @@ position_plot <- ggplot(position_proportional, aes(x = position, y = prop, fill 
     labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
   ) +
   # theme_tufte() +
+  theme_light() +
   theme(
     plot.title = element_text(hjust = 0.5)
   ) +
@@ -801,7 +639,7 @@ Consistent with the previous findings regarding the proportion of positive and n
 
 ### Countries
 
-```{r include = FALSE, message=FALSE, warning=FALSE}
+```{r}
 country_emotions = processed_data %>%  
   select(ResponseId, country, country_other, all_of(feelings)) %>% 
   # mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
@@ -903,8 +741,8 @@ Altogether, 71 countries were recorded in the dataset, many of which were repres
 
 ```{r}
 countries_pos <- ggplot(positive_countries, aes(x = reorder(country, mean_emotion), y = mean_emotion, colour = country)) +
-  geom_point(size = 3) + 
-  ggrepel::geom_text_repel(aes(label = country_iso)) +
+  geom_point(size = 3) +
+  theme_bw() +
   theme(legend.position = "none", 
         axis.text.x = element_text(angle = 45, hjust = 1),
           plot.title = element_text(hjust = 0.5)) +
@@ -913,27 +751,19 @@ countries_pos <- ggplot(positive_countries, aes(x = reorder(country, mean_emotio
       title = "Mean positive emotional intensity by countries (with at least 10 respondents)",
       x = "",
       y = ""
-    )
+    ) +
+  ggrepel::geom_text_repel(aes(label = paste0(country_iso, "\n", n)))
 
 countries_pos
 ```
 
-Indian, Spanish, Brazilian and Turkish respondents indicated the highest values regarding positive emotions (mean emotional intensity was above 4). The following table summarises the numbers of respondents (in ascending order) from each country represented on the plot.
-
-```{r}
-pos_counts <- positive_countries %>% 
-  select(
-    n, country
-  ) %>% 
-  arrange(n)
-pos_counts %>% 
-  flextable()
-```
+Indian, Spanish, Brazilian and Turkish respondents indicated the highest values regarding positive emotions (mean emotional intensity was above 4). 
 
 ```{r}
 countries_neg <- ggplot(negative_countries, aes(x = reorder(country, mean_emotion), y = mean_emotion, colour = country)) +
   geom_point(size = 3) + 
-  ggrepel::geom_text_repel(aes(label = country_iso)) +
+  ggrepel::geom_text_repel(aes(label = paste0(country_iso, "\n", n))) +
+  theme_bw() +
   theme(legend.position = "none", 
         axis.text.x = element_text(angle = 45, hjust = 1),
           plot.title = element_text(hjust = 0.5)) +
@@ -947,16 +777,180 @@ countries_neg <- ggplot(negative_countries, aes(x = reorder(country, mean_emotio
 countries_neg
 ```
 
-The differences in mean values regarding negative emotions is not substantial: Belgian respondents' mean emotional intensity was 0.8833, and mean emotional intensity regarding Turkey was 2.2283. The numbers of respondents are summarized in the following table:
-
-```{r}
-neg_counts <- negative_countries %>% 
-  select(
-    n, country
-  ) %>% 
-  arrange(n)
-neg_counts %>% 
-  flextable()
-```
+The differences in mean values regarding negative emotions is not substantial: Belgian respondents' mean emotional intensity was 0.8833, and mean emotional intensity regarding Turkey was 2.2283. 
 
 Notably, respondents from Turkey also reported comparatively high levels of both positive and negative emotional intensity relative to respondents from other countries.
+
+# Descriptives
+
+### Questionnaire completion
+
+The following table summarizes questionnaire completion rates.
+
+```{r}
+completion_table <- processed_data %>% 
+  select(Finished) %>% 
+  count(Finished, name = "count") %>% 
+  mutate(Finished = recode(Finished, "True" = "completed", 
+         "False" = "not completed"))
+
+# completion_plot <- descriptive_plots(processed_data, "Status", "Questionnaire Completion")
+completion_table %>% 
+  flextable() %>% 
+  set_table_properties(align = "left")
+```
+
+### Genders
+
+```{r}
+gender_table <- processed_data %>% 
+  select(gender) %>% 
+  count(gender, name = "n") %>% 
+  filter(!is.na(gender)) %>% 
+  arrange(desc(n))
+  
+gender_table %>% 
+  flextable() %>% 
+  set_table_properties(align = "left")
+```
+
+With regards to gender, female respondents comprised the largest proportion of respondents, followed by male participants. Participants identifying as non-binary or selecting "Prefer not to say" constituted a smaller proportion of the sample.
+
+### Participants by research area
+
+```{r}
+area_descriptive = descriptive_plots(processed_data, "area", "")
+
+area_descriptive 
+```
+
+Health scientists represented the largest disciplinary groups, whereas physical scientists represented the smallest.
+
+### Participants by position
+
+```{r}
+position_descriptive <- descriptive_plots(processed_data, "position", "")
+
+position_descriptive
+```
+
+Professors comprised the most sizable position group in the sample (with full professors representing the most largest subgroup), while research assistants constituted the smallest position group.
+
+### Participants by category of work
+
+```{r}
+work_descriptive <- descriptive_plots(processed_data, "category_of_work", "")
+
+work_descriptive
+```
+
+The vast majority of researchers conduct research in laboratory or in online settings, yet researchers in the clinical field constitute a notable subgroup.
+
+### Country distribution
+
+```{r}
+df_country_map <- processed_data %>%
+  mutate(country = ifelse(country == "" | is.na(country), NA, country)) %>%
+  filter(!is.na(country)) %>%
+  count(country) %>%
+  mutate(country = tolower(country),
+         country = dplyr::case_when(
+           country == "united states of america" ~ "usa",
+           country == "united kingdom of great britain and northern ireland" ~ "uk",
+           TRUE ~ country
+         ))
+
+world_map <- map_data("world") %>%
+  mutate(region = tolower(region))
+
+world_data <- left_join(world_map, df_country_map, by = c("region" = "country"))
+
+country_centroids <- world_data %>%
+  filter(!is.na(n)) %>%
+  group_by(region, n) %>%
+  summarise(
+    long = mean(long, na.rm = TRUE),
+    lat  = mean(lat,  na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+descriptive_plotmap <- ggplot(world_data, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill = n), 
+               color = "white", 
+               linewidth = 0.1
+               ) +
+  # ggrepel::geom_label_repel(
+  #   data = country_centroids,
+  #   aes(x = long, y = lat, label = n),
+  #   inherit.aes = FALSE, 
+  #   size = 3, 
+  #   max.overlaps = 20
+  #   ) +
+  geom_label(
+    data = country_centroids,
+    aes(x = long, y = lat, label = n),
+    inherit.aes = FALSE,
+    size = 2.5,
+    color = "black",
+    fontface = "bold",
+    fill = "white",        
+    alpha = 0.6,           
+    label.size = 0.1,      
+    check_overlap = TRUE
+  ) +
+  scale_fill_gradient(
+    low  = "#deebf7",
+    high = "#08519c",
+    na.value = "grey95"
+  ) +
+  labs(
+    title = "",
+    fill  = "Participants"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title    = element_text(face = "bold"),
+    axis.text.x   = element_blank(),
+    axis.title    = element_blank(),
+    panel.grid    = element_blank(),
+    legend.position = "none", 
+    axis.text.y   = element_blank(),
+  )
+descriptive_plotmap
+```
+
+Respondents from the United States of America comprised the largest group in the sample. Although Australia and Canadian were notably represented countries, however, their representation was substantially lower that that of the United States.
+
+Researchers from European countries constituted a substantial proportion of respondents, however, as can be seen on the map, the labels are visually cluttered (probably due to the size of Europe in contrast to the size of the world).\
+In order to overcome the issue of the congested labels, a separate plot was created, which visualizes the numbers of respondents from European countries.
+
+```{r}
+plot_europe <- ggplot(world_data, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill = n), color = "white", linewidth = 0.1) +
+  geom_label(
+    data = country_centroids %>% 
+      filter(long >= -25, long <= 45, lat >= 35, lat <= 72),
+    aes(x = long, y = lat, label = n),
+    inherit.aes = FALSE,
+    size = 2.5,
+    fill = "white",
+    alpha = 0.7,
+    label.size = 0.1
+  ) +
+  scale_fill_gradient(low = "#deebf7", high = "#08519c", na.value = "grey95") +
+  coord_fixed(xlim = c(-25, 45), ylim = c(35, 72), ratio = 1.3) +
+  labs(title = "Europe") +
+  theme_minimal(base_size = 11) +
+  theme(
+    plot.title  = element_text(face = "bold"),
+    axis.text   = element_blank(),
+    axis.title  = element_blank(),
+    panel.grid  = element_blank(),
+    legend.position = "none"
+  )
+
+plot_europe
+```
+
+Out of all 569 European participants, the researchers from the United Kingdom formed the largest group, followed by researchers from Spain, Italy, Poland and Germany.

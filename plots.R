@@ -48,6 +48,7 @@ descriptive_plots <- function(data,
       y = "Number of Participants"
     ) +
     theme_minimal(base_size = 14) +
+    theme_bw() +
     theme(
       plot.title = element_text(),
       axis.text.x = element_text(size = 12, angle = angle, hjust = 1)
@@ -111,6 +112,7 @@ scatterplot <- function(data, palette_type) {
   ggplot(data, aes(x = research_stage, y = mean_score, colour = emotion)) +
     geom_point(size = 3) +
     theme_minimal(base_size = 10) +
+    theme_bw() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1), 
           legend.key.size = unit(0.4, "cm"),
           legend.text = element_text(size = 8),
@@ -150,6 +152,7 @@ post_project_plot <- function(data, title) {
     scale_y_continuous(breaks = seq(0, 7, by = 2),
                        expand = c(0,0)) +
     geom_point(na.rm = T) +
+    theme_bw() +
     theme(
       axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1)) +
     labs(title = title, 
@@ -179,15 +182,14 @@ age_grouping = function(df) {
           (age >= 51 & age <= 60) ~ "51-60", 
           (age >= 61 & age <= 70) ~ "61-70", 
           (age >= 71 & age <= 80) ~ "71-80", 
-          (age >= 81 & age <= 90) ~ "81-90", 
-          (age >= 91 & age < 101) ~ "91-100", 
-          age == 100 ~ "91-100"
+          (age >= 81 & age <= 91) ~ "81-100", 
+          age == 100 ~ "81-100"
         ), ## creating age groups, then converting the age_group variable to factor, so that the age_pyramid can be made
       age_group = factor(
         age_group,
         levels = c(
           "20-30","31-40","41-50","51-60",
-          "61-70","71-80","81-90","91-100")
+          "61-70","71-80","81-100")
       )
     )
 }
