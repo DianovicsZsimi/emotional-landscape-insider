@@ -201,7 +201,9 @@ neg_radar <- emotion_means %>%
 neg_ready_df <- rbind(max_values, min_values, neg_radar)
 negative_radar <- ggplotify::as.ggplot(function() radarchart(neg_ready_df,
           title = paste("Negative emotions")))
+```
 
+```{r}
 ### both radars together: 
 overall_radars <- negative_radar + positive_radar + plot_layout(widths = c(1, 1))
 overall_radars
@@ -231,11 +233,14 @@ general_distribution1 <- ggplot(feeling_general, aes(x = feeling_general_1, y = 
   ) +
   labs(
     x = "General feeling scores",
-    y = "", 
+    y = "n", 
     title = "")
+```
 
+```{r}
 general_distribution1 + theme_bw()
 ```
+
 The distribution was shifted toward the positive end of the scale. The most frequent response (the mode) was 2, while the strongest positive response (3) was less frequent. Negative scores were relatively infrequent. 
 
 # Overall emotional landscape by research stage
@@ -340,7 +345,7 @@ stage_neg_plot <- scatterplot(stage_neg_long, palette_type = "Paired") +
       y = "Mean Score",
       color = "Emotion"
     )
-stage_neg_plot
+# stage_neg_plot
 ```
 
 ```{r}
@@ -355,14 +360,14 @@ stage_pos_plot <- scatterplot(stage_pos_long, palette_type = "Spectral") +
 # stage_pos_plot
 ```
 
-```{r}
+```{r, fig.height = 5, fig.width = 12}
 mean_emotions_stage <- stage_neg_plot + stage_pos_plot + plot_layout(widths = c(1, 1))
 mean_emotions_stage
 ```
 
 Again, the plots illustrate that the intensity positive emotions was consistently higher than that of negative emotions. However, among negative emotions, disappointment was reported with relatively high intensity. The intensity of fear gradually decreased throughout the stages, although a slight increase was observed in the Waiting stage. With regards to positive emotions, interest emerged as the most intensely experienced emotion, followed by pride. A notable pattern is visible for relief, whose intensity increased steadily throughout the stages of research.
 
-#### Post-project stage
+### Post-project stage
 
 The Post-project stage was divided into 3 categories, depending on the outcome of the submission/future of the project: - Accepted and published, - Accepted but not yet published, - Rejected (rejected and postponed, rejected and abandoned, rejected and being revised). The three subgroups of the Rejected category was merged due to the small sample size (*N* = 12), therefore the results should be interpreted carefully.
 
@@ -385,8 +390,18 @@ post_project1_long <- post_project1 %>%
   longer_heatmap() %>% 
   sum_analysis()
 
-post_project1_plot <- post_project_plot(post_project1_long, "Accepted and Published") 
-  
+post_project1_plot <- post_project_plot(post_project1_long, "Accepted and Published") + 
+  scale_colour_manual(
+    values = c(
+      positive = "firebrick",
+      negative = "steelblue"
+    )
+  ) +
+  theme(
+    legend.position = "none"
+  )
+
+# post_project1_plot
 ```
 
 ```{r}
@@ -401,7 +416,16 @@ post_project2_long <- post_project2 %>%
   longer_heatmap() %>% 
   sum_analysis()
 
-post_project2_plot <- post_project_plot(post_project2_long, "Accepted but not yet published")
+post_project2_plot <- post_project_plot(post_project2_long, "Accepted but not yet published") + 
+  scale_colour_manual(
+    values = c(
+      positive = "firebrick",
+      negative = "steelblue"
+    )
+  ) +
+  theme(
+    legend.position = "none"
+  )
 # post_project2_plot
 ```
 
@@ -426,7 +450,16 @@ post_project3_long <- post_project3 %>%
   longer_heatmap() %>%
   sum_analysis()
 
-post_project3_plot <- post_project_plot(post_project3_long, "Rejected: mean intensity of all emotions")
+post_project3_plot <- post_project_plot(post_project3_long, "Rejected: mean intensity of all emotions") + 
+  scale_colour_manual(
+    values = c(
+      positive = "firebrick",
+      negative = "steelblue"
+    )
+  ) +
+  theme(
+    legend.position = "none"
+  )
 ```
 
 ```{r}
@@ -610,14 +643,18 @@ position_data <- averages_data %>%
   )
 
 position_proportional <- position_data %>% 
-  mutate(mean_plot = ifelse(valence == "negative_mean", -mean_value, mean_value)) %>% 
+  # mutate(mean_plot = ifelse(valence == "negative_mean", -mean_value, mean_value)) %>% 
   group_by(position) %>% 
   mutate(prop = mean_value/sum(mean_value))
 
 position_plot <- ggplot(position_proportional, aes(x = position, y = prop, fill = valence)) +
-  geom_col(width = 0.7) +
+  geom_col(
+    # width = 0.7
+  ) +
   # geom_hline(yintercept = 0.5) +
-  scale_y_continuous(labels = percent, limits = c(0, 1)) +
+  scale_y_continuous(
+    labels = scales::percent
+  ) +
   scale_fill_manual(
     values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
     name = "Valence",

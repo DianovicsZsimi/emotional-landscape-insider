@@ -113,10 +113,11 @@ scatterplot <- function(data, palette_type) {
     geom_point(size = 3) +
     theme_minimal(base_size = 10) +
     theme_bw() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12), 
           legend.key.size = unit(0.4, "cm"),
-          legend.text = element_text(size = 8),
-          legend.title = element_text(size = 9)) +
+          legend.text = element_text(size = 10),
+          legend.title = element_text(size = 12), 
+          plot.title = element_text(size = 14)) +
     scale_y_continuous(limits = c(1, 7)) +
     scale_color_brewer(palette = palette_type)
   }
@@ -140,14 +141,18 @@ longer_heatmap = function(df) {
 sum_analysis = function(df) {
   df %>% 
     group_by(emotion) %>% 
-    summarise(mean_intensity = mean(intensity, na.rm = T))
+    summarise(mean_intensity = mean(intensity, na.rm = T)) %>% 
+    mutate(
+      valence = ifelse(emotion %in% positive, "positive", "negative")
+    )
 }
 
 ## post-project plot: 
 post_project_plot <- function(data, title) {
   data %>% 
   ggplot(aes(x = emotion,
-             y = mean_intensity)) +
+             y = mean_intensity, 
+             colour = valence)) +
     coord_cartesian(ylim = c(0,7)) +
     scale_y_continuous(breaks = seq(0, 7, by = 2),
                        expand = c(0,0)) +
