@@ -209,7 +209,7 @@ overall_radars <- negative_radar + positive_radar + plot_layout(widths = c(1, 1)
 overall_radars
 ```
 
-As can be seen on the radar charts, positive emotions tended to be more intensely experienced than negative emotions. Interest was reported with the greatest intensity, followed by pride and contentment. Among negative emotions, fear and disappointment exhibited the highest mean intensity. However, their intensity remained lower than that of positive emotions.
+As can be seen on the radar charts, positive emotions tended to be more intensely experienced than negative emotions. Interest was reported with the greatest intensity, followed by pride and contentment. Among negative emotions, fear and disappointment exhibited the highest mean intensity. 
 
 ## Intensity of general feeling throughout the research stages
 
@@ -241,7 +241,7 @@ general_distribution1 <- ggplot(feeling_general, aes(x = feeling_general_1, y = 
 general_distribution1 + theme_bw()
 ```
 
-The distribution was shifted toward the positive end of the scale. The most frequent response (the mode) was 2, while the strongest positive response (3) was less frequent. Negative scores were relatively infrequent. 
+The distribution shifted toward the positive end of the scale. The most frequent response (the mode) was 2, while the strongest positive response (3) was less frequent. Negative scores were relatively uncommon. 
 
 # Overall emotional landscape by research stage
 
@@ -324,7 +324,7 @@ chron_plot <- chron_long %>%
 chron_plot 
 ```
 
-Throughout the research stages, it is clear that the valence of certain emotions was dominantly positive, especially regarding the post-project stage, the Data analysis, Data collection and Report writing stages. Negative emotions were more intensely reported in the Reality check, and the Preparations stages, however, the intensity of positive emotions was substantially higher.
+Throughout the research stages, it is clear that the valence of certain emotions was dominantly positive, especially regarding the Post-project stage, the Data analysis, Data collection and Report writing stages. Negative emotions were more intensely reported in the Reality check, and the Preparations stages, however, the intensity of positive emotions was substantially higher.
 
 ### Positive and negative emotions
 
@@ -369,7 +369,7 @@ Again, the plots illustrate that the intensity positive emotions was consistentl
 
 ### Post-project stage
 
-The Post-project stage was divided into 3 categories, depending on the outcome of the submission/future of the project: - Accepted and published, - Accepted but not yet published, - Rejected (rejected and postponed, rejected and abandoned, rejected and being revised). The three subgroups of the Rejected category was merged due to the small sample size (*N* = 12), therefore the results should be interpreted carefully.
+The Post-project stage was divided into 3 categories, depending on the outcome of the submission/future of the project: Accepted and published; Accepted but not yet published; Rejected (rejected and postponed, rejected and abandoned, rejected and being revised). The three subgroups of the Rejected category were merged due to the small sample size (_N_ = 12), therefore the results should be interpreted carefully.
 
 ```{r}
 post_project <- processed_data %>% 
@@ -828,13 +828,14 @@ The following table summarizes questionnaire completion rates.
 completion_table <- processed_data %>% 
   select(Finished) %>% 
   count(Finished, name = "count") %>% 
-  mutate(Finished = recode(Finished, "True" = "completed", 
-         "False" = "not completed"))
+  mutate(Finished = recode(Finished, "True" = "Completed", 
+         "False" = "Not completed")) 
 
 # completion_plot <- descriptive_plots(processed_data, "Status", "Questionnaire Completion")
 completion_table %>% 
   flextable() %>% 
-  set_table_properties(align = "left")
+  set_header_labels(Finished = "") %>% 
+  set_table_properties(align = "left", layout = "autofit")
 ```
 
 ### Genders
@@ -848,7 +849,7 @@ gender_table <- processed_data %>%
   
 gender_table %>% 
   flextable() %>% 
-  set_table_properties(align = "left")
+  set_table_properties(align = "left", layout = "autofit")
 ```
 
 With regards to gender, female respondents comprised the largest proportion of respondents, followed by male participants. Participants identifying as non-binary or selecting "Prefer not to say" constituted a smaller proportion of the sample.
