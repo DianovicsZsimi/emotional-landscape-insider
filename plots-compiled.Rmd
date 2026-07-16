@@ -781,8 +781,8 @@ countries_pos <- ggplot(positive_countries, aes(x = reorder(country, mean_emotio
   geom_point(size = 3) +
   theme_bw() +
   theme(legend.position = "none", 
-        axis.text.x = element_text(angle = 45, hjust = 1),
-          plot.title = element_text(hjust = 0.5)) +
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)) +
   scale_y_continuous(limits = c(1, 7)) +
   labs(
       title = "Mean positive emotional intensity by countries (with at least 10 respondents)",
@@ -797,13 +797,17 @@ countries_pos
 Indian, Spanish, Brazilian and Turkish respondents indicated the highest values regarding positive emotions (mean emotional intensity was above 4). 
 
 ```{r}
-countries_neg <- ggplot(negative_countries, aes(x = reorder(country, mean_emotion), y = mean_emotion, colour = country)) +
+countries_neg <- ggplot(negative_countries, aes(x = reorder(country, mean_emotion), 
+                                                y = mean_emotion, 
+                                                colour = country)) +
   geom_point(size = 3) + 
-  ggrepel::geom_text_repel(aes(label = paste0(country_iso, "\n", n))) +
+  ggrepel::geom_text_repel(
+    aes(label = paste0(country_iso, "\n", n))
+  ) +
   theme_bw() +
   theme(legend.position = "none", 
-        axis.text.x = element_text(angle = 45, hjust = 1),
-          plot.title = element_text(hjust = 0.5)) +
+        axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5)) +
   scale_y_continuous(limits = c(0, 7)) +
   labs(
       title = "Mean negative emotional intensity by countries (with at least 10 respondents)",
