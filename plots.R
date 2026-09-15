@@ -244,3 +244,41 @@ prop_preparation = function(data, variable) {
     group_by(variable) %>% 
     mutate(prop = mean_value/sum(mean_value))
 }
+
+# Overall emotional landscape across research stages - raincloud plot
+raincloud_plot <- function(data, title) {
+  data %>% 
+    ggplot(data, aes(x = value,  y = research_stage)) +
+    ggdist::stat_halfeye(
+      adjust = 1,
+      justification = -0.2, 
+      .width = 0.5, 
+      width = 0.6,
+      point_colour = NA, 
+      position = position_dodge(.7)
+    ) +
+    ggdist::stat_dots(
+      data = data, aes(x = value, y = research_stage), 
+      side = "left",
+      justification = 1.1,
+      binwidth = 0.01,
+      overflow = "compress",
+      alpha = 0.1,
+      position = position_dodge(.7)) +
+    geom_boxplot(
+      width = 0.2,
+      outlier.color = NA,
+      alpha = 1,
+      fill = "white",
+      color = "black",
+      lwd = 0.5,
+      position = position_dodge(.7)
+    ) +
+    labs(
+      title = title,
+      x = "",
+      y = "Research stage"
+    ) +
+    scale_y_discrete(limits = rev) +
+    theme_bw()
+}

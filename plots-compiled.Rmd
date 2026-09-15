@@ -32,6 +32,8 @@ if (!require("viridis")) install.packages("viridis")
 if (!require("ggrepel")) install.packages("ggrepel")
 if (!require("countrycode")) install.packages("countrycode")
 if (!require("flextable")) install.packages("flextable")
+if (!require("ggdist")) install.packages("ggdist")
+if (!require("waffle")) install.packages("waffle")
 
 
 library(tidyverse)
@@ -54,6 +56,8 @@ library(countrycode)
 library(viridis)
 library(ggrepel)
 library(flextable)
+library(ggdist)
+library(waffle)
 ```
 
 ```{r}
@@ -70,7 +74,7 @@ positive <- c("interest", "amusement", "pride", "joy", "pleasure", "contentment"
 negative <- c("sadness", "guilt", "regret" ,"shame", "disappointment" , "fear", "disgust", "contempt" , "hate","anger")
 
 original_order = c(
-  "Project genesis/ first thoughts/ idea creation",
+  "Project genesis",
   "Reality check",
   "Preparations",
   "Data collection",
@@ -91,8 +95,69 @@ position_order = c("Other",
 ```
 
 ```{r}
-processed_data = raw_data %>% 
+na_processed_data = raw_data %>% 
   rename(interest = feeling_stage_1,
+         amusement = feeling_stage_2,
+         pride = feeling_stage_3,
+         joy = feeling_stage_4,
+         pleasure = feeling_stage_5,
+         contentment = feeling_stage_6,
+         love = feeling_stage_7, 
+         admiration = feeling_stage_8, 
+         relief = feeling_stage_9, 
+         compassion = feeling_stage_10,
+         sadness = feeling_stage_11, 
+         guilt = feeling_stage_12,
+         regret = feeling_stage_13, 
+         shame = feeling_stage_14, 
+         disappointment = feeling_stage_15, 
+         fear = feeling_stage_16, 
+         disgust = feeling_stage_17, 
+         contempt = feeling_stage_18,
+         hate = feeling_stage_19, 
+         anger = feeling_stage_20) %>% 
+  mutate(research_stage = factor(research_stage), 
+         area = factor(area),
+         gender = factor(gender),
+         position = factor(position), 
+         category_of_work = factor(category_of_work), 
+         ) %>% 
+  mutate(research_stage = recode(research_stage,	
+                                 "Post-project stage (the project has received a decision (accepted or rejected). At this point, it is either concluded or being revised and prepared for submission to another venue)"
+                                 = "Post-project stage", 
+                                 "Preparations (IRB permit, preregistration, experiment preparations)" = 
+                                   "Preparations",
+                                 "Reality check (e.g., literature search, consultation with colleagues)" =
+                                   "Reality check",
+                                 "Waiting for journal's response and revisions" = "Waiting",
+                                 "Project genesis/ first thoughts/ idea creation" = "Project genesis"
+                                 )) %>% 
+  mutate(across(all_of(feelings),
+                ~ as.numeric(as.character(.x)))) %>% 
+  mutate(feeling_general_1 = as.numeric(as.character(feeling_general_1))) %>% 
+  filter(!(dismiss_1 == "No")) %>% 
+  rename(Duration = `Duration..in.seconds.`) %>% 
+  mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
+  mutate(NAcount = rowSums(is.na(across(interest:anger)))) %>%
+  mutate(NAcountpos = rowSums(is.na(across(interest:compassion)))) %>% 
+  mutate(NAcountneg = rowSums(is.na(across(sadness:anger))))
+
+na_means_data <- na_processed_data %>% 
+  select(
+    -Progress, -Duration, -Finished, -dismiss_1, 
+  ) %>% 
+  mutate(
+    across(interest:anger, as.numeric), 
+    pos_mean = rowMeans(across(interest:compassion), na.rm = T), 
+    neg_mean = rowMeans(across(sadness:anger), na.rm = T), 
+    across(pos_mean:neg_mean, ~ na_if(., NaN))
+  ) %>% 
+  select(
+    ResponseId, research_stage, interest:anger, category_of_work, position, area, age, country, country_other, pos_mean, neg_mean, gender
+  )
+
+null_processed_data <- raw_data %>% 
+    rename(interest = feeling_stage_1,
          amusement = feeling_stage_2,
          pride = feeling_stage_3,
          joy = feeling_stage_4,
@@ -138,7 +203,7 @@ processed_data = raw_data %>%
   mutate(NAcountpos = rowSums(is.na(across(interest:compassion)))) %>% 
   mutate(NAcountneg = rowSums(is.na(across(sadness:anger))))
 
-means_data <- processed_data %>% 
+null_means_data <- null_processed_data %>% 
   select(
     -Progress, -Duration, -Finished, -dismiss_1, 
   ) %>% 
@@ -162,7 +227,7 @@ The overall pattern represents that researchers reported both positive and negat
 ```{r}
 ## Radar chart - not yet sure if this is informative enough
 ### data preparation
-emotion_means <- means_data %>% 
+emotion_means <- na_means_data %>% 
   select(interest:anger) %>% 
   pivot_longer(
     cols = everything(),
@@ -203,7 +268,7 @@ negative_radar <- ggplotify::as.ggplot(function() radarchart(neg_ready_df,
           title = paste("Negative emotions")))
 ```
 
-```{r}
+```{r, fig.height = 5, fig.width = 10}
 ### both radars together: 
 overall_radars <- negative_radar + positive_radar + plot_layout(widths = c(1, 1))
 overall_radars
@@ -216,128 +281,158 @@ As can be seen on the radar charts, positive emotions tended to be more intensel
 Regarding the intensity of the general feeling (represented on a scale of -3 to 3), the visualization includes a distribution of the reported general feeling scores.
 
 ```{r}
-feeling_general <- processed_data %>% 
+feeling_general <- na_processed_data %>% 
   select(feeling_general_1) %>% 
   filter(!is.na(feeling_general_1)) %>% 
-  mutate(feeling_general_1 = as.double(feeling_general_1)) %>% 
-  count(feeling_general_1)
+  mutate(feeling_general_1 = as.factor(feeling_general_1)) %>% 
+  count(feeling_general_1) %>% 
+  mutate(feeling_general_1 = factor(feeling_general_1,
+                                    levels = unique(feeling_general_1)))
 
-general_distribution1 <- ggplot(feeling_general, aes(x = feeling_general_1, y = n)) +
-  geom_point(width = 0.25) +
-  scale_x_continuous(
-    breaks = -3:3,
-    labels = -3:3
+waffle_general <- ggplot(feeling_general, aes(fill = feeling_general_1, values = n)) + 
+  geom_waffle(n_rows = 28, 
+              size = 0.33, 
+              colour = "white") +
+  coord_equal() +
+  scale_fill_discrete(
+    palette = "viridis", 
+    guide = guide_legend(nrow = 1)
+  ) + 
+  labs(
+    fill = "General feeling scores"
   ) +
   theme(
-    axis.title.y = element_blank()
-  ) +
-  labs(
-    x = "General feeling scores",
-    y = "n", 
-    title = "")
+    panel.background = element_blank(), 
+    axis.text.y = element_blank(), 
+    axis.text.x = element_blank(), 
+    axis.ticks.y = element_blank(), 
+    axis.ticks.x = element_blank(), 
+    legend.position = "bottom", 
+    legend.title = element_blank()
+  )
 ```
 
-```{r}
-general_distribution1 + theme_bw()
+```{r, fig.height = 5, fig.width = 12}
+print(waffle_general)
 ```
 
-The distribution shifted toward the positive end of the scale. The most frequent response (the mode) was 2, while the strongest positive response (3) was less frequent. Negative scores were relatively uncommon. 
+The plot shows the proportional distribution of the general feeling scores, with each value divided by 15 (in order to represent its relative contribution to the overall score). The most frequent values were 1 and 2; positive values carry considerably greater weight in the distribution, whereas negative values are relatively uncommon. 
 
 # Overall emotional landscape by research stage
 
-### Overall emotional landscape
-
 ```{r}
-by_research_stage <- sd_data(processed_data) %>% 
+by_research_stage <- sd_data(null_processed_data) %>% 
   select(research_stage, all_of(feelings), sd_landscape) %>% 
   filter(!(research_stage == "")) %>%
   filter(!(sd_landscape < 0)) %>% 
-    mutate(across(sadness:anger, ~ 8 - .x))
+    mutate(across(sadness:anger, ~ 8 - .x)) %>% 
+  arrange(research_stage)
 
 research_stage_emotions_positive = by_research_stage %>% 
-  select(research_stage, all_of(positive))
-research_stage_emotions_positive = emotion_function(research_stage_emotions_positive, research_stage)
-
-stage_pos_means = mean_function(research_stage_emotions_positive, research_stage) 
+  select(research_stage, all_of(positive)) %>% 
+  mutate(research_stage = factor(research_stage, levels = original_order))
 
 research_stage_emotions_negative = by_research_stage %>% 
   select(research_stage, all_of(negative)) %>% 
-    mutate(across(sadness:anger, ~ 8 - .x))
-research_stage_emotions_negative = emotion_function(research_stage_emotions_negative, research_stage)
-
-stage_neg_means = mean_function(research_stage_emotions_negative, research_stage)
-
-research_stage_emotion_chron1 =
-  left_join(
-    stage_pos_means,
-    stage_neg_means,
-    by = "research_stage"
-  ) %>%
-  rename(
-    mean_emotion_pos = mean_emotion.x,
-    mean_emotion_neg = mean_emotion.y
-  )
-
-chron_long <- research_stage_emotion_chron1 %>%
-  pivot_longer(
-    cols = c(mean_emotion_pos, mean_emotion_neg),
-    names_to = "valence",
-    values_to = "mean_emotion"
-  ) %>% 
-  mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
-  filter(!is.na(research_stage))
-
-chron_plot <- chron_long %>%
-  ggplot(aes(x = research_stage,
-             y = mean_emotion,
-             color = valence,
-             group = valence)) +
-  geom_point() +
-  geom_point(size = 3) +
-  scale_color_manual(
-    values = c(
-      mean_emotion_pos = "red",
-      mean_emotion_neg = "blue"
-    ), 
-    labels = c(
-      mean_emotion_pos = "Positive", 
-      mean_emotion_neg = "Negative"
-    )
-  ) +
-  labs(
-    title = "Emotional valence througout the research stages",
-    x = "", 
-    y = "Mean emotional intensity", 
-    color = "Emotional valence") +
-  # theme_tufte() +
-  theme_bw() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1), 
-    axis.title.x = element_blank(), 
-    axis.title.y = element_text(size = 8)
-    ) + 
-  scale_y_continuous(
-    limits = c(1, 7),
-    breaks = 1:7
-  )
-
-chron_plot 
+  mutate(across(sadness:anger, ~ 8 - .x)) %>% 
+  mutate(research_stage = factor(research_stage, levels = original_order))
 ```
 
-Throughout the research stages, it is clear that the valence of certain emotions was dominantly positive, especially regarding the Post-project stage, the Data analysis, Data collection and Report writing stages. Negative emotions were more intensely reported in the Reality check, and the Preparations stages, however, the intensity of positive emotions was substantially higher.
+```{r}
+pos_long <- research_stage_emotions_positive %>% 
+  pivot_longer(
+    cols = -research_stage, 
+    names_to = "emotion", 
+    values_to = "value"
+  )
 
-### Positive and negative emotions
+pos_raincloud <- ggplot(pos_long, aes(x = value,  y = research_stage)) +
+  geom_jitter(
+    color = "#a61626", 
+    width = 0.25, 
+    size = 0.5
+  ) +
+  geom_boxplot(
+    width = 0.2,
+    outlier.color = NA,
+    alpha = 1,
+    fill = "white",
+    color = "black",
+    lwd = 0.5,
+    position = position_dodge(.7)
+  ) + 
+  scale_y_discrete(limits = rev) +
+  labs(
+      title = "Distribution of negative emotions",
+      x = "",
+      y = ""
+  ) +
+  theme_bw()
+
+# pos_raincloud
+```
+
 
 ```{r}
-research_stage_emotions_negative <- research_stage_emotions_negative %>% 
+neg_long <- research_stage_emotions_negative %>% 
+  pivot_longer(
+    cols = -research_stage, 
+    names_to = "emotion", 
+    values_to = "value"
+  )
+
+neg_raincloud <- ggplot(neg_long, aes(x = value,  y = research_stage)) +
+  geom_jitter(
+    color = "#064fcc", 
+    width = 0.25, 
+    size = 0.5
+  ) +
+  geom_boxplot(
+    width = 0.2,
+    outlier.color = NA,
+    alpha = 1,
+    fill = "white",
+    color = "black",
+    lwd = 0.5,
+    position = position_dodge(.7)
+  ) + 
+  scale_y_discrete(limits = rev) +
+  labs(
+      title = "Distribution of negative emotions",
+      x = "",
+      y = ""
+  ) +
+  theme_bw()
+
+# neg_raincloud
+```
+
+```{r, fig.height = 5, fig.width = 12}
+raincloud_plots <- pos_raincloud + neg_raincloud + plot_layout(widths = c(1, 1))
+
+raincloud_plots
+```
+Overall, it is clear that positive emotions were reported more intensely than negative emotions: higher scores are more frequent, the conditional means (by research stage) are substantially higher than that of the negative emotions. 
+With regards to negative emotions, lower scores more frequent. (It is noteworthy that this data frame contains the emotions that were reported as _not felt_, therefore their intensity was 0. Consequently, this might have influenced the distribution of the intensity of positive and negative emotions.)
+
+### Trends in positive and negative emotions 
+
+```{r}
+research_stage_emotions_negative2 = emotion_function(research_stage_emotions_negative, research_stage)
+stage_neg_means = mean_function(research_stage_emotions_negative2, research_stage)
+
+research_stage_emotions_negative2 <- research_stage_emotions_negative2 %>% 
   mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
   filter(!is.na(research_stage))
 
-research_stage_emotions_positive <- research_stage_emotions_positive %>% 
+research_stage_emotions_positive2 = emotion_function(research_stage_emotions_positive, research_stage)
+stage_pos_means = mean_function(research_stage_emotions_positive2, research_stage) 
+
+research_stage_emotions_positive2 <- research_stage_emotions_positive2 %>% 
    mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
   filter(!is.na(research_stage))
 
-stage_neg_long <- scatter_long(research_stage_emotions_negative)
+stage_neg_long <- scatter_long(research_stage_emotions_negative2)
 stage_neg_plot <- scatterplot(stage_neg_long, palette_type = "Paired") +
   labs(
       title = "Negative emotions",
@@ -349,7 +444,7 @@ stage_neg_plot <- scatterplot(stage_neg_long, palette_type = "Paired") +
 ```
 
 ```{r}
-stage_pos_long <- scatter_long(research_stage_emotions_positive)
+stage_pos_long <- scatter_long(research_stage_emotions_positive2)
 stage_pos_plot <- scatterplot(stage_pos_long, palette_type = "Spectral") +
   labs(
       title = "Positive emotions",
@@ -372,7 +467,7 @@ Again, the plots illustrate that the intensity positive emotions was consistentl
 The Post-project stage was divided into 3 categories, depending on the outcome of the submission/future of the project: Accepted and published; Accepted but not yet published; Rejected (rejected and postponed, rejected and abandoned, rejected and being revised). The three subgroups of the Rejected category were merged due to the small sample size (_N_ = 12), therefore the results should be interpreted carefully.
 
 ```{r}
-post_project <- processed_data %>% 
+post_project <- null_processed_data %>% 
   filter(
     research_stage == "Post-project stage"
   ) %>% 
@@ -429,7 +524,7 @@ post_project2_plot <- post_project_plot(post_project2_long, "Accepted but not ye
 # post_project2_plot
 ```
 
-```{r}
+```{r, fig.height = 5, fig.width = 10}
 accepted_plots <- post_project1_plot + post_project2_plot + plot_layout(widths = c(1, 1))
 accepted_plots
 ```
@@ -437,6 +532,8 @@ accepted_plots
 In both cases, positive emotions were still reported more intensively than negative emotions; the intensity of interest and pride was the highest, whereas amusement, love, admiration and compassion were the least intensely experienced emotions. Interestingly, in the *"Accepted but not yet published"* category, the intensity of negative emotions was slightly lower, and the intensity of certain positive emotions (joy, contentment, relief) was slightly higher, compared to the *"Accepted and published"* category. Across both categories, shame, hate, guilt and contempt were among the least experienced negative emotions; conversely, in the *"Accepted but not yet published"* category, sadness and disappointment were reported with relatively low intensity.
 
 However, it is important to mention that the sample size of the *"Accepted but not yet published"* category is particularly small: *N* = 12, whilst in the *"Accepted and published"* category, the sample size is *N* = 23. The small sample size in the former category represents the exclusion of participants who did not complete the questionnaire.
+
+The dataset contained all emotion scores that were reported as "not 
 
 ```{r}
 post_project3 <- post_project %>% 
@@ -462,7 +559,7 @@ post_project3_plot <- post_project_plot(post_project3_long, "Rejected: mean inte
   )
 ```
 
-```{r}
+```{r, fig.height = 5, fig.width = 10}
 post_project3_plot + plot_layout(widths = c(1, 1))
 ```
 
@@ -472,15 +569,27 @@ In the *"Rejected"* category (including the *"Rejected and abandoned, Rejected a
 
 ```{r}
 ## Data preparation: 
-averages_data <- processed_data %>% 
+averages_data <- na_processed_data %>% 
   averages_prep()
+
+valence_counts <- averages_data %>% 
+  age_grouping() %>% 
+  filter(!is.na(age), 
+         !(is.na(pos_mean)),
+         !(is.na(neg_mean))) %>% 
+  mutate(
+    valence = ifelse(pos_mean > neg_mean, "positive", "negative")
+  ) %>% 
+  count(age_group, valence, name = "n")
 
 age_data <- averages_data %>% 
   age_grouping() %>% 
   filter(!is.na(age), 
          !(is.na(pos_mean)),
          !(is.na(neg_mean))) %>% 
-  mutate(valence = ifelse(pos_mean > neg_mean, "positive", "negative")) %>% 
+  mutate(
+    valence = ifelse(pos_mean > neg_mean, "positive", "negative")
+  ) %>% 
   arrange(age_group) %>% 
   group_by(age_group) %>% 
   summarise(
@@ -491,7 +600,9 @@ age_data <- averages_data %>%
     cols = c(positive_mean, negative_mean), 
     names_to = "valence", 
     values_to = "mean_value"
-  )
+  ) %>% 
+  mutate(valence = str_remove(valence, "_mean")) %>% 
+  left_join(valence_counts, by = c("age_group", "valence"))
 
 age_proportional <- age_data %>% 
   mutate(mean_plot = ifelse(valence == "negative_mean", -mean_value, mean_value)) %>% 
@@ -503,26 +614,48 @@ age_plot <- ggplot(age_proportional, aes(x = age_group, y = prop, fill = valence
   # geom_hline(yintercept = 0.5) +
   scale_y_continuous(labels = percent, limits = c(0, 1)) +
   scale_fill_manual(
-    values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
+    values = c("positive" = "firebrick", "negative" = "steelblue"),
     name = "Valence",
-    labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
+    labels = c("positive" = "Positive", "negative" = "Negative")
     ) +
   # theme_tufte() +
-  theme_light() +
+  theme_bw() +
   theme(
     plot.title = element_text(hjust = 0.5)
+  ) +
+  geom_text(
+    aes(label = n),
+    position = position_stack(vjust = 0.5),
+    size = 4, 
+    color = "white"
   ) +
   labs(
     y = "Proportion of total emotional intensity",
     x = "", 
-    title = "Proportion of total emotional intensity\nwithin the age groups") +
+    title = "Proportion of total emotional intensity\nwithin the age groups"
+  ) +
   coord_flip()
-age_plot 
+```
+```{r, fig.align='center'}
+age_plot
 ```
 
-The plot represents the proportion of the emotional intensity of positive and negative emotions. Across all groups, positive emotional intensity accounted for the majority of the total emotional intensity, indicating that positive emotions were dominant. Participants aged 71-90 exhibited the highest proportion of positive emotions. In the younger age groups, positive emotions represent roughly two-thirds or three-quarters of the total emotional intensity.
+
+The plot represents the proportion of the emotional intensity of positive and negative emotions. Across all groups, positive emotional intensity accounted for the majority of the total emotional intensity, indicating that positive emotions were dominant. Participants aged 71-80 exhibited the highest proportion of positive emotions. In the younger age groups, positive emotions represent roughly two-thirds or three-quarters of the total emotional intensity.
 
 ```{r}
+area_counts <- averages_data %>% 
+  select(
+    ResponseId, area, pos_mean, neg_mean
+  ) %>%
+  filter(!is.na(area), 
+         !(is.na(pos_mean)),
+         !(is.na(neg_mean))) %>% 
+  mutate(
+    valence = ifelse(pos_mean > neg_mean, "positive", "negative")
+  ) %>% 
+  count(area, valence, name = "n")
+
 area_data <- averages_data %>% 
   select(
     ResponseId, area, pos_mean, neg_mean
@@ -541,7 +674,9 @@ area_data <- averages_data %>%
     cols = c(positive_mean, negative_mean), 
     names_to = "valence", 
     values_to = "mean_value"
-  )
+  ) %>% 
+  mutate(valence = str_remove(valence, "_mean")) %>% 
+  left_join(area_counts, by = c("area", "valence"))
 
 area_proportional <- area_data %>% 
   mutate(mean_plot = ifelse(valence == "negative_mean", -mean_value, mean_value)) %>% 
@@ -553,25 +688,46 @@ area_plot <- ggplot(area_proportional, aes(x = area, y = prop, fill = valence)) 
   # geom_hline(yintercept = 0.5) +
   scale_y_continuous(labels = percent, limits = c(0, 1)) +
   scale_fill_manual(
-    values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
+    values = c("positive" = "firebrick", "negative" = "steelblue"),
     name = "Valence",
-    labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
+    labels = c("positive" = "Positive", "negative" = "Negative")
     ) +
   # theme_tufte() +
-  theme_light() +
+  theme_bw() +
   theme(
     plot.title = element_text(hjust = 0.5)
+  ) +
+  geom_text(
+    aes(label = n),
+    position = position_stack(vjust = 0.5),
+    size = 4, 
+    color = "white"
   ) +
   labs(y = "Proportion of total emotional intensity", 
        x = "", 
        title = "Proportion of total emotional intensity\nwithin the areas of research") +
   coord_flip()
+```
+```{r, fig.align='center'}
 area_plot
 ```
+
 
 Among different areas of research, the pattern regarding the proportion of positive and negative emotions is consistent with the aforementioned results: positive emotional intensity represents the majority of the total emotional intensity. Nevertheless, it should be noted that compared to the other areas, researchers working in Physical sciences reported a slightly larger proportion of negative emotional intensity.
 
 ```{r}
+work_counts <- averages_data %>% 
+  select(
+    ResponseId, category_of_work, pos_mean, neg_mean
+  ) %>% 
+  filter(!is.na(category_of_work), 
+         !(is.na(pos_mean)),
+         !(is.na(neg_mean))) %>% 
+  mutate(
+    valence = ifelse(pos_mean > neg_mean, "positive", "negative")
+  ) %>% 
+  count(category_of_work, valence, name = "n")
+
 work_data <- averages_data %>% 
   select(
     ResponseId, category_of_work, pos_mean, neg_mean
@@ -590,7 +746,9 @@ work_data <- averages_data %>%
     cols = c(positive_mean, negative_mean), 
     names_to = "valence", 
     values_to = "mean_value"
-  )
+  ) %>% 
+  mutate(valence = str_remove(valence, "_mean")) %>% 
+  left_join(work_counts, by = c("category_of_work", "valence"))
 
 work_proportional <- work_data %>% 
   mutate(mean_plot = ifelse(valence == "negative_mean", -mean_value, mean_value)) %>% 
@@ -602,25 +760,44 @@ work_plot <- ggplot(work_proportional, aes(x = category_of_work, y = prop, fill 
   # geom_hline(yintercept = 0.5) +
   scale_y_continuous(labels = percent, limits = c(0, 1)) +
   scale_fill_manual(
-    values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
+    values = c("positive" = "firebrick", "negative" = "steelblue"),
     name = "Valence",
-    labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
+    labels = c("positive" = "Positive", "negative" = "Negative")
     ) +
   # theme_tufte() +
-  theme_light() +
+  theme_bw() +
   theme(
     plot.title = element_text(hjust = 0.5)
+  ) +
+  geom_text(
+    aes(label = n),
+    position = position_stack(vjust = 0.5),
+    size = 4, 
+    color = "white"
   ) +
   labs(y = "Proportion of total emotional intensity", 
        x = "", 
        title = "Proportion of total emotional intensity\nwithin the categories of academic work") +
   coord_flip()
+```
+```{r, fig.align='center'}
 work_plot
 ```
+
 
 Across all research settings, positive emotions consistently represented the majority of total emotional intensity. A minor difference can be observed in the case of Lab/online research, where the proportion of negative emotions seems to be slightly larger.
 
 ```{r}
+position_counts <- averages_data %>% 
+ select(
+    ResponseId, position, pos_mean, neg_mean
+  ) %>% 
+  filter(!is.na(position), 
+         !(is.na(pos_mean)),
+         !(is.na(neg_mean))) %>% 
+  mutate(valence = ifelse(pos_mean > neg_mean, "positive", "negative")) %>% 
+  count(position, valence, name = "n")
+
 position_data <- averages_data %>% 
   select(
     ResponseId, position, pos_mean, neg_mean
@@ -640,7 +817,9 @@ position_data <- averages_data %>%
     cols = c(positive_mean, negative_mean), 
     names_to = "valence", 
     values_to = "mean_value"
-  )
+  ) %>% 
+  mutate(valence = str_remove(valence, "_mean")) %>% 
+  left_join(position_counts, by = c("position", "valence"))
 
 position_proportional <- position_data %>% 
   # mutate(mean_plot = ifelse(valence == "negative_mean", -mean_value, mean_value)) %>% 
@@ -656,28 +835,37 @@ position_plot <- ggplot(position_proportional, aes(x = position, y = prop, fill 
     labels = scales::percent
   ) +
   scale_fill_manual(
-    values = c("positive_mean" = "firebrick", "negative_mean" = "steelblue"),
+    values = c("positive" = "firebrick", "negative" = "steelblue"),
     name = "Valence",
-    labels = c("positive_mean" = "Positive", "negative_mean" = "Negative")
+    labels = c("positive" = "Positive", "negative" = "Negative")
   ) +
   # theme_tufte() +
-  theme_light() +
+  theme_bw() +
   theme(
     plot.title = element_text(hjust = 0.5)
+  ) +
+  geom_text(
+    aes(label = n),
+    position = position_stack(vjust = 0.5),
+    size = 4, 
+    color = "white"
   ) +
   labs(y = "Proportion of total emotional intensity", 
        x = "", 
        title = "Proportion of total emotional intensity\nacross positions") +
   coord_flip()
+```
+```{r, fig.align='center'}
 position_plot
 ```
+
 
 Consistent with the previous findings regarding the proportion of positive and negative emotions, positive emotional intensity dominated across all academic positions. Associate and full professors reported relatively higher proportions of positive emotions, whereas PhD students and researchers classified in the "Other" category showed a comparatively larger proportion of negative emotional intensity.
 
 ### Countries
 
 ```{r}
-country_emotions = processed_data %>%  
+country_emotions = na_processed_data %>%  
   select(ResponseId, country, country_other, all_of(feelings)) %>% 
   # mutate(across(interest:anger, ~ na_if(.x, 0))) %>% 
 mutate(
@@ -762,7 +950,7 @@ negative_countries = country_emotions_clean %>%
   arrange(country) %>% 
   mutate(country = factor(country)) %>% 
   group_by(country) %>% 
-  filter(n() >= 10) %>% 
+  filter(n() >= 20) %>% 
   ungroup() %>% 
   group_by(country) %>% 
   summarise(
@@ -794,7 +982,7 @@ countries_pos <- ggplot(positive_countries, aes(x = reorder(country, mean_emotio
 countries_pos
 ```
 
-Indian, Spanish, Brazilian and Turkish respondents indicated the highest values regarding positive emotions (mean emotional intensity was above 4). 
+Indian, Spanish, Egyptian and Turkish respondents indicated the highest values regarding positive emotions (mean emotional intensity was above 4). 
 
 ```{r}
 countries_neg <- ggplot(negative_countries, aes(x = reorder(country, mean_emotion), 
@@ -818,9 +1006,7 @@ countries_neg <- ggplot(negative_countries, aes(x = reorder(country, mean_emotio
 countries_neg
 ```
 
-The differences in mean values regarding negative emotions is not substantial: Belgian respondents' mean emotional intensity was 0.8833, and mean emotional intensity regarding Turkey was 2.2283. 
-
-Notably, respondents from Turkey also reported comparatively high levels of both positive and negative emotional intensity relative to respondents from other countries.
+Interestingly, respondents from Turkey reported comparatively high levels of both positive and negative emotional intensity relative to respondents from other countries. Besides Turkish participants, French and Polish respondents also reported similarly higher negative emotional intensity. 
 
 # Descriptives
 
@@ -829,7 +1015,7 @@ Notably, respondents from Turkey also reported comparatively high levels of both
 The following table summarizes questionnaire completion rates.
 
 ```{r}
-completion_table <- processed_data %>% 
+completion_table <- na_processed_data %>% 
   select(Finished) %>% 
   count(Finished, name = "count") %>% 
   mutate(Finished = recode(Finished, "True" = "Completed", 
@@ -845,7 +1031,7 @@ completion_table %>%
 ### Genders
 
 ```{r}
-gender_table <- processed_data %>% 
+gender_table <- na_processed_data %>% 
   select(gender) %>% 
   count(gender, name = "n") %>% 
   filter(!is.na(gender)) %>% 
@@ -861,7 +1047,7 @@ With regards to gender, female respondents comprised the largest proportion of r
 ### Participants by research area
 
 ```{r}
-area_descriptive = descriptive_plots(processed_data, "area", "")
+area_descriptive = descriptive_plots(na_processed_data, "area", "")
 
 area_descriptive 
 ```
@@ -871,7 +1057,7 @@ Health scientists represented the largest disciplinary groups, whereas physical 
 ### Participants by position
 
 ```{r}
-position_descriptive <- descriptive_plots(processed_data, "position", "")
+position_descriptive <- descriptive_plots(na_processed_data, "position", "")
 
 position_descriptive
 ```
@@ -881,7 +1067,7 @@ Professors comprised the most sizable position group in the sample (with full pr
 ### Participants by category of work
 
 ```{r}
-work_descriptive <- descriptive_plots(processed_data, "category_of_work", "")
+work_descriptive <- descriptive_plots(na_processed_data, "category_of_work", "")
 
 work_descriptive
 ```
@@ -891,7 +1077,7 @@ The vast majority of researchers conduct research in laboratory or in online set
 ### Country distribution
 
 ```{r}
-df_country_map <- processed_data %>%
+df_country_map <- na_processed_data %>%
   mutate(country = ifelse(country == "" | is.na(country), NA, country)) %>%
   filter(!is.na(country)) %>%
   count(country) %>%
