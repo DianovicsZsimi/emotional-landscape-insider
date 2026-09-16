@@ -218,6 +218,13 @@ null_means_data <- null_processed_data %>%
   )
 ```
 
+# Overview - Introduction
+
+In the course of thus study, a total of 1463 researchers from 64 countries participated in the questionnaire. 
+The aim of the questionnaire was to investigate the intensity of certain emotions during specific stages of a research project, and the general emotional state of researchers with regards to their career. Altogehter, 20 emotions were used to depict the emotional landscape of academic work. 
+Participants had an option to elaborate the underlying mechanisms and reasons behind the intensity of certain emotions, therefore the data includes qualitative elements. 
+When defining the 20 emotions, the Geneva Emotion Wheel was used. The scale applied to measure the intensity of emotions was a 1-7 discrete scale, also including 0 (meaning that the emotion was not felt in that specific research stage). 
+
 # Overall pattern
 
 The overall pattern represents that researchers reported both positive and negative emotional intensity in relation to their work.
@@ -225,7 +232,7 @@ The overall pattern represents that researchers reported both positive and negat
 ## Overall intensity of positive and negative emotions
 
 ```{r}
-## Radar chart - not yet sure if this is informative enough
+## Radar chart
 ### data preparation
 emotion_means <- na_means_data %>% 
   select(interest:anger) %>% 
@@ -278,7 +285,7 @@ As can be seen on the radar charts, positive emotions tended to be more intensel
 
 ## Intensity of general feeling throughout the research stages
 
-Regarding the intensity of the general feeling (represented on a scale of -3 to 3), the visualization includes a distribution of the reported general feeling scores.
+Regarding the intensity of the overall emotional state (represented on a scale of -3 to 3), the visualization includes a distribution of the reported general feeling scores.
 
 ```{r}
 feeling_general <- na_processed_data %>% 
@@ -325,7 +332,7 @@ by_research_stage <- sd_data(null_processed_data) %>%
   select(research_stage, all_of(feelings), sd_landscape) %>% 
   filter(!(research_stage == "")) %>%
   filter(!(sd_landscape < 0)) %>% 
-    mutate(across(sadness:anger, ~ 8 - .x)) %>% 
+  # mutate(across(sadness:anger, ~ 8 - .x)) %>% 
   arrange(research_stage)
 
 research_stage_emotions_positive = by_research_stage %>% 
@@ -334,7 +341,7 @@ research_stage_emotions_positive = by_research_stage %>%
 
 research_stage_emotions_negative = by_research_stage %>% 
   select(research_stage, all_of(negative)) %>% 
-  mutate(across(sadness:anger, ~ 8 - .x)) %>% 
+  # mutate(across(sadness:anger, ~ 8 - .x)) %>% 
   mutate(research_stage = factor(research_stage, levels = original_order))
 ```
 
@@ -350,7 +357,8 @@ pos_raincloud <- ggplot(pos_long, aes(x = value,  y = research_stage)) +
   geom_jitter(
     color = "#a61626", 
     width = 0.25, 
-    size = 0.5
+    size = 0.5, 
+    alpha = 0.5
   ) +
   geom_boxplot(
     width = 0.2,
@@ -363,7 +371,7 @@ pos_raincloud <- ggplot(pos_long, aes(x = value,  y = research_stage)) +
   ) + 
   scale_y_discrete(limits = rev) +
   labs(
-      title = "Distribution of negative emotions",
+      title = "Distribution of positive emotions",
       x = "",
       y = ""
   ) +
@@ -385,7 +393,8 @@ neg_raincloud <- ggplot(neg_long, aes(x = value,  y = research_stage)) +
   geom_jitter(
     color = "#064fcc", 
     width = 0.25, 
-    size = 0.5
+    size = 0.5, 
+    alpha = 0.5
   ) +
   geom_boxplot(
     width = 0.2,
@@ -412,20 +421,209 @@ raincloud_plots <- pos_raincloud + neg_raincloud + plot_layout(widths = c(1, 1))
 
 raincloud_plots
 ```
+The plots depict all negative and positive emotions reported in each research stage. The jittering represents the amounts of observations in each grade of the intensity scale. 
 Overall, it is clear that positive emotions were reported more intensely than negative emotions: higher scores are more frequent, the conditional means (by research stage) are substantially higher than that of the negative emotions. 
-With regards to negative emotions, lower scores more frequent. (It is noteworthy that this data frame contains the emotions that were reported as _not felt_, therefore their intensity was 0. Consequently, this might have influenced the distribution of the intensity of positive and negative emotions.)
+With regards to negative emotions, lower scores are more frequent. (It is noteworthy that this data frame contains the emotions that were reported as _not felt_, therefore their intensity was 0. Consequently, this might have influenced the distribution of the intensity of positive and negative emotions.)
+
+### Distributions of specific emotions
+
+```{r}
+pos_emotions <- by_research_stage %>% 
+  select(
+    -research_stage, 
+    -all_of(negative), 
+    -sd_landscape
+  ) 
+
+pos_jitter_data <- pos_emotions %>% 
+  pivot_longer(
+    cols = interest:compassion, 
+    names_to = "emotion", 
+    values_to = "value"
+  ) %>% 
+  arrange(emotion) %>% 
+  filter(value != 0, 
+         !(is.na(value))) %>% 
+  mutate(emotion = factor(emotion, levels = positive))
+
+pos_null_data <- pos_emotions %>% 
+  pivot_longer(
+    cols = interest:compassion, 
+    names_to = "emotion", 
+    values_to = "value"
+  ) %>% 
+  group_by(emotion) %>% 
+  summarise(
+    null_percentage = mean(value == 0, na.rm = TRUE) * 100
+  ) %>% 
+  mutate(
+    emotion = as.factor(emotion)
+  )
+
+max_pos_value <- max(pos_jitter_data$value, na.rm = TRUE)
+jitter_pos_labels <- c(1, 2, 3, 4, 5, 6, 7)
+
+pos_jitter <- ggplot(pos_jitter_data, aes(x = value,  y = as.factor(emotion))) +
+  geom_jitter(
+    color = "#a61626", 
+    width = 0.25, 
+    size = 0.5, 
+    alpha = 0.4
+  ) +
+  geom_boxplot(
+    width = 0.2,
+    outlier.color = NA,
+    alpha = 1,
+    fill = "white",
+    color = "black",
+    lwd = 0.5
+  ) +
+  geom_text(
+    data =  pos_null_data,
+    aes(
+      x = max_pos_value + 0.5,
+      y = emotion,
+      label = paste0(round(null_percentage, 1), "%")
+    ),
+    inherit.aes = FALSE,
+    hjust = 0
+  ) +
+  scale_x_discrete(
+    limits = c(1, max_pos_value + 1),
+    expand = waiver(), 
+    breaks = NULL
+  ) +
+  scale_y_discrete(limits = rev) +
+  labs(
+    title = "Distribution of specific positive emotions",
+    x = "",
+    y = ""
+  ) +
+  theme_bw() +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+# pos_jitter
+```
+
+```{r}
+neg_emotions <- by_research_stage %>% 
+  select(
+    -research_stage, 
+    -all_of(positive), 
+    -sd_landscape
+  ) %>% 
+  filter(!is.na(sadness))
+
+neg_jitter_data <- neg_emotions %>% 
+  pivot_longer(
+    cols = sadness:anger, 
+    names_to = "emotion", 
+    values_to = "value"
+  ) %>% 
+  arrange(emotion) %>% 
+  filter(value != 0, 
+         !(is.na(value))) %>% 
+  mutate(emotion = factor(emotion, levels = negative))
+
+neg_null_data <- neg_emotions %>% 
+  pivot_longer(
+    cols = sadness:anger, 
+    names_to = "emotion", 
+    values_to = "value"
+  ) %>% 
+  group_by(emotion) %>% 
+  summarise(
+    null_percentage = mean(value == 0, na.rm = TRUE) * 100
+  )
+
+max_neg_value <- max(neg_jitter_data$value, na.rm = TRUE)
+jitter_neg_labels <- c(1, 2, 3, 4, 5, 6, 7)
+
+neg_jitter <- ggplot(neg_jitter_data, aes(x = value,  y = emotion)) +
+  geom_jitter(
+    color = "steelblue", 
+    width = 0.25, 
+    size = 0.5, 
+    alpha = 0.5
+  ) +
+  geom_boxplot(
+    width = 0.2,
+    outlier.color = NA,
+    alpha = 1,
+    fill = "white",
+    color = "black",
+    lwd = 0.5
+  ) +
+  geom_text(
+    data =  neg_null_data,
+    aes(
+      x = max_neg_value + 0.5,
+      y = emotion,
+      label = paste0(round(null_percentage, 1), "%")
+    ),
+    inherit.aes = FALSE,
+    hjust = 0
+  ) +
+  scale_x_discrete(
+    limits = c(1, max_neg_value + 1),
+    expand = waiver(), 
+    breaks = NULL
+  ) +
+  scale_y_discrete(limits = rev) +
+  labs(
+    title = "Distribution of specific negative emotions",
+    x = "",
+    y = ""
+  ) +
+  theme_bw() +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+# neg_jitter
+```
+
+```{r, fig.height = 5, fig.width = 12}
+jitter_plots <- pos_jitter + neg_jitter + plot_layout(widths = c(1, 1))
+
+jitter_plots
+```
+The plots illustrate the intensity of specific positive and negative emotions. The x axis represents the 1-7 discrete scale, the frequency of each reported value is represented by the jittered data points. The percentage of the reported 0 values regarding each emotion is placed (0 values express the emotion not being felt) on the right side of each plot. 
+Lower and 0 scores within negative emotions were more frequent, however, fear and disappointment were relatively prevalent. 
 
 ### Trends in positive and negative emotions 
 
 ```{r}
-research_stage_emotions_negative2 = emotion_function(research_stage_emotions_negative, research_stage)
+na_research_stage <- sd_data(na_processed_data) %>% 
+  select(research_stage, all_of(feelings), sd_landscape) %>% 
+  filter(!(research_stage == "")) %>%
+  filter(!(sd_landscape < 0)) %>% 
+  # mutate(across(sadness:anger, ~ 8 - .x)) %>% 
+  arrange(research_stage)
+
+na_pos_stage_emotions = na_research_stage %>% 
+  select(research_stage, all_of(positive)) %>% 
+  mutate(research_stage = factor(research_stage, levels = original_order))
+
+na_neg_stage_emotions = na_research_stage %>% 
+  select(research_stage, all_of(negative)) %>% 
+  # mutate(across(sadness:anger, ~ 8 - .x)) %>% 
+  mutate(research_stage = factor(research_stage, levels = original_order))
+
+research_stage_emotions_negative2 = emotion_function(na_neg_stage_emotions, research_stage)
 stage_neg_means = mean_function(research_stage_emotions_negative2, research_stage)
 
 research_stage_emotions_negative2 <- research_stage_emotions_negative2 %>% 
   mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
   filter(!is.na(research_stage))
 
-research_stage_emotions_positive2 = emotion_function(research_stage_emotions_positive, research_stage)
+research_stage_emotions_positive2 = emotion_function(na_pos_stage_emotions, research_stage)
 stage_pos_means = mean_function(research_stage_emotions_positive2, research_stage) 
 
 research_stage_emotions_positive2 <- research_stage_emotions_positive2 %>% 
@@ -456,7 +654,7 @@ stage_pos_plot <- scatterplot(stage_pos_long, palette_type = "Spectral") +
 ```
 
 ```{r, fig.height = 5, fig.width = 12}
-mean_emotions_stage <- stage_neg_plot + stage_pos_plot + plot_layout(widths = c(1, 1))
+mean_emotions_stage <- stage_pos_plot + stage_neg_plot + plot_layout(widths = c(1, 1))
 mean_emotions_stage
 ```
 
@@ -467,7 +665,7 @@ Again, the plots illustrate that the intensity positive emotions was consistentl
 The Post-project stage was divided into 3 categories, depending on the outcome of the submission/future of the project: Accepted and published; Accepted but not yet published; Rejected (rejected and postponed, rejected and abandoned, rejected and being revised). The three subgroups of the Rejected category were merged due to the small sample size (_N_ = 12), therefore the results should be interpreted carefully.
 
 ```{r}
-post_project <- null_processed_data %>% 
+post_project <- na_processed_data %>% 
   filter(
     research_stage == "Post-project stage"
   ) %>% 
@@ -533,7 +731,7 @@ In both cases, positive emotions were still reported more intensively than negat
 
 However, it is important to mention that the sample size of the *"Accepted but not yet published"* category is particularly small: *N* = 12, whilst in the *"Accepted and published"* category, the sample size is *N* = 23. The small sample size in the former category represents the exclusion of participants who did not complete the questionnaire.
 
-The dataset contained all emotion scores that were reported as "not 
+The values reported as 0 were not included in the data used to create the plots, since the visualizations only represent the emotions that were reported as "felt". 
 
 ```{r}
 post_project3 <- post_project %>% 
@@ -566,6 +764,8 @@ post_project3_plot + plot_layout(widths = c(1, 1))
 In the *"Rejected"* category (including the *"Rejected and abandoned, Rejected and being revised, Rejected and postponed"* subcategories), negative emotions were relatively higher, compared to former visualizations. The most prominent negative emotions were disappointment, anger, sadness and regret. Furthermore, the interest remained to be reported with high intensity, followed by pride.
 
 # Emotional Landscape Across Key Variables
+
+When creating the visualizations, the emotions reported as "not felt" (as 0), were not included in the analysis.
 
 ```{r}
 ## Data preparation: 
@@ -640,8 +840,7 @@ age_plot <- ggplot(age_proportional, aes(x = age_group, y = prop, fill = valence
 age_plot
 ```
 
-
-The plot represents the proportion of the emotional intensity of positive and negative emotions. Across all groups, positive emotional intensity accounted for the majority of the total emotional intensity, indicating that positive emotions were dominant. Participants aged 71-80 exhibited the highest proportion of positive emotions. In the younger age groups, positive emotions represent roughly two-thirds or three-quarters of the total emotional intensity.
+The plot represents the proportion of the emotional intensity of positive and negative emotions. Across all groups, positive emotional intensity accounted for the majority of the total emotional intensity, indicating that positive emotions were dominant. Participants aged 71-80 exhibited the highest proportion of positive emotions. In the younger age groups, positive emotions represent roughly two-thirds or three-quarters of the total emotional intensity. 
 
 ```{r}
 area_counts <- averages_data %>% 
@@ -780,6 +979,7 @@ work_plot <- ggplot(work_proportional, aes(x = category_of_work, y = prop, fill 
        title = "Proportion of total emotional intensity\nwithin the categories of academic work") +
   coord_flip()
 ```
+
 ```{r, fig.align='center'}
 work_plot
 ```
@@ -932,7 +1132,7 @@ positive_countries = country_emotions_clean %>%
   arrange(country) %>% 
   mutate(country = factor(country)) %>% 
   group_by(country) %>% 
-  filter(n() >= 10) %>% 
+  filter(n() >= 20) %>% 
   ungroup() %>% 
   group_by(country) %>% 
   summarise(
@@ -973,7 +1173,7 @@ countries_pos <- ggplot(positive_countries, aes(x = reorder(country, mean_emotio
         plot.title = element_text(hjust = 0.5)) +
   scale_y_continuous(limits = c(1, 7)) +
   labs(
-      title = "Mean positive emotional intensity by countries (with at least 10 respondents)",
+      title = "Mean positive emotional intensity by countries (with at least 20 respondents)",
       x = "",
       y = ""
     ) +
@@ -998,7 +1198,7 @@ countries_neg <- ggplot(negative_countries, aes(x = reorder(country, mean_emotio
         plot.title = element_text(hjust = 0.5)) +
   scale_y_continuous(limits = c(0, 7)) +
   labs(
-      title = "Mean negative emotional intensity by countries (with at least 10 respondents)",
+      title = "Mean negative emotional intensity by countries (with at least 20 respondents)",
       x = "",
       y = ""
     )
