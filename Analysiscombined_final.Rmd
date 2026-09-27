@@ -1760,7 +1760,7 @@ for (cont in continents) {
   continent_results_pos[[cont]] = temp_data
   
   continent_plots_pos[[cont]] = continent_plot_function_valence(
-    temp_data,color_low = "orange",color_high = "red",
+    temp_data, color_low = "orange",color_high = "red",
     title_text = paste("Positive Emotions in", cont))}
 continent_plots_pos
 
@@ -1791,7 +1791,7 @@ continent_plots_neg
 ## 8.4. Combined plots
 
 ```{r}
-combined_plots_country = Map(`+`, continent_plots_pos, continent_plots_neg) #The map goes through the two vectors in parallel --> given they contain plots, the combined plots are this easy to create
+combined_plots_country = Map(`+`, continent_plots_pos, continent_plots_neg) # The map goes through the two vectors in parallel --> given they contain plots, the combined plots are this easy to create
 
 combined_plots_country
 ```
