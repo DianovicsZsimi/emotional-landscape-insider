@@ -300,7 +300,7 @@ continent_plot_function = function(data, title_text){
     ggplot(aes(y = reorder(country, mean_emotion), x = dev,fill = mean_emotion )) +
     geom_col(width = 0.3) +
     geom_vline(xintercept = 0, linetype = "dashed") +
-    scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7)+
+    scale_x_continuous(limits = c(-3, 3), breaks = -3:3, labels = 1:7) +
     scale_fill_gradient(low = "orange", high = "red") +
     theme_tufte() +
     labs(title = {{title_text}}, x = "", y = "") +
