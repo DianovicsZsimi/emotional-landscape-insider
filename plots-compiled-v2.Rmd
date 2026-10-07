@@ -281,7 +281,7 @@ negative_radar <- ggplotify::as.ggplot(function() radarchart(neg_ready_df,
 overall_radars <- negative_radar + positive_radar + plot_layout(widths = c(1, 1))
 overall_radars
 
-ggsave("pos_radar.png", plot = positive_radar)
+# ggsave("pos_radar.png", plot = positive_radar)
 ```
 
 As can be seen on the radar charts, positive emotions tended to be more intensely experienced than negative emotions. Interest was reported with the greatest intensity, followed by pride and contentment. Among negative emotions, fear and disappointment exhibited the highest mean intensity. 
@@ -683,7 +683,7 @@ jitter_plots <- pos_jitter + neg_jitter + plot_layout(widths = c(1, 1))
 
 jitter_plots
 
-ggsave("jitter_plots.png", plot = jitter_plots)
+# ggsave("jitter_plots.png", plot = jitter_plots)
 ```
 The plots illustrate the intensity of specific positive and negative emotions. The x axis represents the 1-7 discrete scale, the frequency of each reported value is represented by the jittered data points. The percentage of the reported 0 values regarding each emotion is placed (0 values express the emotion not being felt) on the right side of each plot. 
 Lower and 0 scores within negative emotions were more frequent, however, fear and disappointment were relatively prevalent. 
@@ -1149,7 +1149,7 @@ position_plot <- ggplot(position_proportional, aes(x = position, y = prop, fill 
 ```{r, fig.align='center'}
 position_plot
 
-ggsave("position_plot.png", plot = position_plot)
+# ggsave("position_plot.png", plot = position_plot)
 ```
 
 
@@ -1496,16 +1496,24 @@ participant_stage <- participant_means %>%
     values_to = "mean"
   )
 
-participant_stage_plot <- ggplot(participant_stage, aes(x = research_stage, y = mean, colour = valence)) +
+participant_stage_plot <- ggplot(participant_stage, aes(x = research_stage, y = mean, color = valence)) +
   geom_point(
     position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8),
     alpha = 0.3, size = 1
   ) +
+  labs(
+    title = "",
+    x = "", 
+    y = "", 
+    color = "Valence"
+  ) +
+  scale_color_manual(labels = c("Negative", "Positive"), values = c("steelblue", "firebrick")) +
+  theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12), 
-          legend.key.size = unit(0.4, "cm"),
-          legend.text = element_text(size = 10),
-          legend.title = element_text(size = 12), 
-          plot.title = element_text(size = 14)) +
+        legend.key.size = unit(0.4, "cm"),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 12), 
+        plot.title = element_text(size = 14)) + 
   scale_y_continuous(limits = c(1, 7), breaks = 1:7)
 ```
 
