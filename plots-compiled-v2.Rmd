@@ -1478,14 +1478,19 @@ Out of all 569 European participants, the researchers from the United Kingdom fo
 
 # =================================================================
 ```{r}
-participant_means <- null_processed_data %>%
+participant_means <- na_processed_data %>%
   filter(Finished == "True") %>% 
   select(-StartDate, -EndDate, -Status, -Progress, -Duration, -RecordedDate, -DistributionChannel, -Finished, -UserLanguage, -dismiss_1, -Q22, -Q22_6_TEXT, -cause_general, -cause_stage) %>% 
   group_by(ResponseId) %>% 
+  # tidyr::drop_na(interest:compassion) %>% 
   mutate(
     pos_mean = rowMeans(across(interest:compassion), na.rm = TRUE),
     neg_mean = rowMeans(across(sadness:anger), na.rm = TRUE)
   ) 
+
+# neg_na <- participant_means %>% 
+#   filter(is.nan(neg_mean)) %>% 
+#   select(all_of(negative), neg_mean)
 
 participant_stage <- participant_means %>% 
   select(ResponseId, pos_mean, neg_mean, research_stage) %>% 
@@ -1494,7 +1499,8 @@ participant_stage <- participant_means %>%
     cols = c(pos_mean, neg_mean), 
     names_to = "valence", 
     values_to = "mean"
-  )
+  ) %>% 
+  filter(!is.nan(mean))
 
 participant_stage_plot <- ggplot(participant_stage, aes(x = research_stage, y = mean, color = valence)) +
   geom_point(
@@ -1502,7 +1508,7 @@ participant_stage_plot <- ggplot(participant_stage, aes(x = research_stage, y = 
     alpha = 0.3, size = 1
   ) +
   labs(
-    title = "",
+    title = "Emotional valence by research stage on the participant level",
     x = "", 
     y = "", 
     color = "Valence"
@@ -1520,22 +1526,143 @@ participant_stage_plot <- ggplot(participant_stage, aes(x = research_stage, y = 
 ```{r}
 # plot still needs adjustments, this is only a demo version
 participant_stage_plot
+ggsave("participant_stage_plot2.png", get_last_plot())
 ```
 
-## Simple correlations: 
+```{r}
+mean_difference <- participant_means %>% 
+  select(ResponseId, pos_mean, neg_mean, research_stage) %>% 
+  mutate(
+    difference = case_when(is.na(pos_mean) ~ -neg_mean, 
+                                is.na(neg_mean) ~ pos_mean, 
+                                (!is.na(neg_mean) && !is.na(pos_mean)) ~ pos_mean-neg_mean)
+    ) %>% 
+  filter(!is.na(difference)) %>% 
+  mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
+  select(-pos_mean, -neg_mean)
+
+mean_stage_plot <- ggplot(mean_difference, aes(x = research_stage, y = difference)) +
+  geom_point(
+    position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8),
+    alpha = 0.3, 
+    size = 1, 
+    color = "steelblue"
+  ) +
+  labs(
+    title = "Difference between mean positive and negative emotional intensity by research stage",
+    x = "", 
+    y = ""
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12), 
+        legend.key.size = unit(0.4, "cm"),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 12), 
+        plot.title = element_text(size = 14)) + 
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  scale_y_continuous(breaks = -7:7) 
+
+mean_stage_plot
+ggsave("mean_stage_plot.png", get_last_plot())
+```
+
+
+### Positive-negative emotional means by research stage
+```{r}
+data_research_stage <- sd_data(na_processed_data) %>% # or na? 
+  select(research_stage, all_of(feelings), sd_landscape) %>% 
+  filter(!(research_stage == "")) %>%
+  filter(!(sd_landscape < 0)) %>% 
+    mutate(across(sadness:anger, ~ 8 - .x))
+
+na_stage_emotions_positive = data_research_stage %>% 
+  select(research_stage, all_of(positive))
+na_stage_emotions_positive = emotion_function(na_stage_emotions_positive, research_stage)
+
+na_stage_pos_means = mean_function(na_stage_emotions_positive, research_stage) 
+
+na_stage_emotions_negative = data_research_stage %>% 
+  select(research_stage, all_of(negative))
+na_stage_emotions_negative = emotion_function(na_stage_emotions_negative, research_stage)
+
+na_neg_means = mean_function(na_stage_emotions_negative, research_stage)
+
+research_stage_emotion_chron1 =
+  left_join(
+    stage_pos_means,
+    stage_neg_means,
+    by = "research_stage"
+  ) %>%
+  rename(
+    mean_emotion_pos = mean_emotion.x,
+    mean_emotion_neg = mean_emotion.y
+  )
+
+chron_long <- research_stage_emotion_chron1 %>%
+  pivot_longer(
+    cols = c(mean_emotion_pos, mean_emotion_neg),
+    names_to = "valence",
+    values_to = "mean_emotion"
+  ) %>% 
+  mutate(research_stage = factor(research_stage, levels = original_order)) %>% 
+  filter(!is.na(research_stage))
+
+chron_plot <- chron_long %>%
+  ggplot(aes(x = research_stage,
+             y = mean_emotion,
+             color = valence,
+             group = valence)) +
+  geom_point() +
+  geom_point(size = 3) +
+  scale_color_manual(
+    values = c(
+      mean_emotion_pos = "firebrick",
+      mean_emotion_neg = "steelblue"
+    ), 
+    labels = c(
+      mean_emotion_pos = "Positive", 
+      mean_emotion_neg = "Negative"
+    )
+  ) +
+  labs(
+    title = "Emotional valence througout the research stages",
+    x = "", 
+    y = "Mean emotional intensity", 
+    color = "Emotional valence") +
+  # theme_tufte() +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1), 
+    axis.title.x = element_blank(), 
+    axis.title.y = element_text(size = 8)
+    ) + 
+  scale_y_continuous(
+    limits = c(1, 7),
+    breaks = 1:7
+  )
+```
+
+```{r}
+chron_plot 
+ggsave("chron_plot.png", get_last_plot())
+```
+
+
+## Ordinal regression: general feeling ~ position  
 ```{r}
 seniority_levels = c("Full professor", 
                      "Associate professor", 
                      "Assistant professor", 
                      "Postdoc", 
                      "PhD student", 
-                     "Research assistant",
-                     "Non-academic researcher",
-                     "Other")
+                     "Research assistant")
 
 seniority_general <- na_processed_data %>% 
   select(feeling_general_1, position) %>% 
-  filter(!is.na(feeling_general_1)) %>% 
+  filter(!is.na(feeling_general_1), 
+         position != "Other", 
+         position != "Non-academic reseacher",
+         !is.na(position)) %>% 
   mutate(position = factor(position, levels = seniority_levels)) %>% 
   arrange(position)
 
@@ -1550,43 +1677,40 @@ seniority_general$position_numeric <- match(
     "Full professor"
   )
 )
+```
 
-library(corrr)
-seniority_cor <- cor.test(
-  seniority_general$feeling_general_1, 
-  seniority_general$position_numeric, 
-  method = "spearman", 
-  use = "complete.obs")
+```{r}
+library(MASS)
+seniority_model_df <- seniority_general %>%
+  filter(!is.na(feeling_general_1), !is.na(position)) %>%
+  mutate(
+    feeling  = factor(feeling_general_1,
+                      levels = sort(unique(feeling_general_1)),
+                      ordered = TRUE),
+    position = factor(position)
+  )
 
-cor_matrix <- cor(
-  seniority_general[, c("feeling_general_1", "position_numeric")],
-  use = "complete.obs",
-  method = "spearman"
-)
+model1 <- MASS::polr(feeling ~ position, data = seniority_model_df, Hess = TRUE)
 
-print(seniority_cor)
+ordinal_summary <- summary(model1)
 
-cor_matrix
+ordinal_summary
+```
 
-# Does feeling intensity systematically increase or decrease as academic seniority increases? - we cannot assess this question, because of the "Non-academic researcher" and "Other" groups
+### Simple correlations: 
+#### - general feeling, positive-negative means
+```{r}
+without_id <- participant_means %>% 
+  dplyr::select(-ResponseId)
 
-# Are feeling intensities different between research assistants, PhD students, postdocs, professors, etc.?
-model <- lm(
-  feeling_general_1 ~ position,
-  data = seniority_general
-)
+means_cordata <- participant_means %>% 
+  ungroup() %>% 
+  dplyr::select(feeling_general_1, pos_mean, neg_mean) %>% 
+  filter(!is.na(pos_mean), 
+         !is.na(neg_mean)) ## only kept the observations without NaN values in either pos_mean or neg_mean
 
-summary(model)
+correlation_table <- cor(means_cordata, method = "spearman", use = "pairwise")
 
-# ANOVA on model: whether position explains a significant amount of variation in general feeling 
-anova(model)
-
-# Does the intensity of general feeling differ between the different seniority levels?
-anova_model <- aov(
-  feeling_general_1 ~ position, 
-  data = seniority_general
-)
-
-summary(anova_model)
+correlation_table
 ```
 
