@@ -1673,13 +1673,13 @@ chron_differences_plot <- ggplot(chron_differences, aes(x = research_stage, y = 
         legend.title = element_text(size = 12), 
         plot.title = element_text(size = 14)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "grey") +
-  scale_y_continuous(breaks = -7:7) +
-  coord_cartesian(ylim = c(-7, 7))
+  scale_y_continuous(breaks = -3:3) +
+  coord_cartesian(ylim = c(-3, 3))
 ```
 
 ```{r, fig.align='center'}
 chron_differences_plot
-ggsave("chron_differences2.png", get_last_plot())
+# ggsave("chron_differences3.png", get_last_plot())
 ```
 
 
