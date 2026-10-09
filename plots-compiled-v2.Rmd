@@ -1,6 +1,6 @@
 ---
-title: "Plots Complied, incl. Explorative Analyses"
-author: "Boglarka Ludmany"
+title: "Emotional Landscape of Empirical Research Projects, incl. Explorative Analyses"
+author: "Author: Boglarka Ludmany"
 date: "2026-09-25"
 output: html_document
 --- 
@@ -1476,7 +1476,7 @@ plot_europe
 
 Out of all 569 European participants, the researchers from the United Kingdom formed the largest group, followed by researchers from Spain, Italy, Poland and Germany.
 
-# =================================================================
+# Explorative analyses
 ```{r}
 participant_means <- na_processed_data %>%
   filter(Finished == "True") %>% 
@@ -1523,10 +1523,10 @@ participant_stage_plot <- ggplot(participant_stage, aes(x = research_stage, y = 
   scale_y_continuous(limits = c(1, 7), breaks = 1:7)
 ```
 
-```{r}
+```{r, fig.align='center'}
 # plot still needs adjustments, this is only a demo version
 participant_stage_plot
-ggsave("participant_stage_plot2.png", get_last_plot())
+# ggsave("participant_stage_plot2.png", get_last_plot())
 ```
 
 ```{r}
@@ -1549,7 +1549,7 @@ mean_stage_plot <- ggplot(mean_difference, aes(x = research_stage, y = differenc
     color = "steelblue"
   ) +
   labs(
-    title = "Difference between mean positive and negative emotional intensity by research stage",
+    title = "Difference between mean positive and negative\nemotional intensity by research stage on the participant level",
     x = "", 
     y = ""
   ) +
@@ -1561,13 +1561,13 @@ mean_stage_plot <- ggplot(mean_difference, aes(x = research_stage, y = differenc
         plot.title = element_text(size = 14)) + 
   geom_hline(yintercept = 0, linetype = "dashed") +
   scale_y_continuous(breaks = -7:7) 
-
-mean_stage_plot
-ggsave("mean_stage_plot.png", get_last_plot())
 ```
 
+```{r, fig.align='center'}
+mean_stage_plot
+# ggsave("mean_stage_plot2.png", get_last_plot())
+```
 
-### Positive-negative emotional means by research stage
 ```{r}
 data_research_stage <- sd_data(na_processed_data) %>% # or na? 
   select(research_stage, all_of(feelings), sd_landscape) %>% 
@@ -1642,13 +1642,49 @@ chron_plot <- chron_long %>%
   )
 ```
 
-```{r}
+```{r, fig.align='center'}
 chron_plot 
-ggsave("chron_plot.png", get_last_plot())
+# ggsave("chron_plot.png", get_last_plot())
+```
+
+```{r}
+chron_differences <- research_stage_emotion_chron1 %>% 
+  mutate(
+    difference = mean_emotion_pos-mean_emotion_neg
+  ) %>% 
+  dplyr::select(research_stage, difference)
+
+chron_differences_plot <- ggplot(chron_differences, aes(x = research_stage, y = difference)) +
+  geom_point(
+    position = position_jitterdodge(jitter.width = 0.1, dodge.width = 0.8),
+    alpha = 0.5, 
+    size = 1, 
+    color = "blue"
+  ) +
+  labs(
+    title = "Difference between mean positive and negative\nemotional intensity by research stage",
+    x = "", 
+    y = ""
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12), 
+        legend.key.size = unit(0.4, "cm"),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 12), 
+        plot.title = element_text(size = 14)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey") +
+  scale_y_continuous(breaks = -7:7) +
+  coord_cartesian(ylim = c(-7, 7))
+```
+
+```{r, fig.align='center'}
+chron_differences_plot
+ggsave("chron_differences2.png", get_last_plot())
 ```
 
 
-## Ordinal regression: general feeling ~ position  
+#### Ordinal regression: 
+Investigating the relationship between general feeling scores and seniority levels. 
 ```{r}
 seniority_levels = c("Full professor", 
                      "Associate professor", 
@@ -1697,8 +1733,7 @@ ordinal_summary <- summary(model1)
 ordinal_summary
 ```
 
-### Simple correlations: 
-#### - general feeling, positive-negative means
+#### Simple correlations between general feeling scores and positive-negative emotional means
 ```{r}
 without_id <- participant_means %>% 
   dplyr::select(-ResponseId)
@@ -1713,4 +1748,3 @@ correlation_table <- cor(means_cordata, method = "spearman", use = "pairwise")
 
 correlation_table
 ```
-
