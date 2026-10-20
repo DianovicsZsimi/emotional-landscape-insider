@@ -143,7 +143,7 @@ na_processed_data = raw_data %>%
   mutate(NAcountpos = rowSums(is.na(across(interest:compassion)))) %>% 
   mutate(NAcountneg = rowSums(is.na(across(sadness:anger))))
 
-na_means_data <- na_processed_data %>% 
+na__data <- na_processed_data %>% 
   select(
     -Progress, -Duration, -Finished, -dismiss_1, 
   ) %>% 
@@ -1748,3 +1748,39 @@ correlation_table <- cor(means_cordata, method = "spearman", use = "pairwise")
 
 correlation_table
 ```
+
+#### New data frame: for textual analysis 
+
+```{r}
+text_data <- raw_data %>% 
+  rename(interest = feeling_stage_1,
+         amusement = feeling_stage_2,
+         pride = feeling_stage_3,
+         joy = feeling_stage_4,
+         pleasure = feeling_stage_5,
+         contentment = feeling_stage_6,
+         love = feeling_stage_7, 
+         admiration = feeling_stage_8, 
+         relief = feeling_stage_9, 
+         compassion = feeling_stage_10,
+         sadness = feeling_stage_11, 
+         guilt = feeling_stage_12,
+         regret = feeling_stage_13, 
+         shame = feeling_stage_14, 
+         disappointment = feeling_stage_15, 
+         fear = feeling_stage_16, 
+         disgust = feeling_stage_17, 
+         contempt = feeling_stage_18,
+         hate = feeling_stage_19, 
+         anger = feeling_stage_20) 
+
+text_data <- text_data %>% 
+  dplyr::select(ResponseId, interest:anger, feeling_general_1, cause_general, cause_stage) %>% 
+  mutate(
+    across(interest:anger, as.numeric), 
+    pos_mean = rowMeans(across(interest:compassion)), 
+    neg_mean = rowMeans(across(sadness:anger)))
+
+write.csv(text_data, "text_data.csv")
+```
+
